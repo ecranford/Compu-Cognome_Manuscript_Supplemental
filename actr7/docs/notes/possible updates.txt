@@ -1,0 +1,13 @@
+This file contains some ideas for extensions/improvements that
+have come up at some point, but which haven't been important 
+enough to actually implement yet.  
+
+- Add an option for tracing the generation of the production
+testing tree when :use-tree is enabled.
+
+
+- There was an idea to have a new "type" of buffer which doesn't
+reinforce upon clearing, but maybe it would still create a new DM
+chunk if it wasn't a match to an existing one.  I think the blending 
+module was the impetus for the idea, but perhaps there would be
+other uses for such a thing.

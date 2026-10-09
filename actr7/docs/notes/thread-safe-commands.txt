@@ -1,0 +1,1433 @@
+Safe:
+
+current-model-struct
+
+verify-current-model
+
+with-current-model
+
+verify-current-mp
+
+print-warning
+
+suppress-warnings
+
+suppress-and-capture-warnings
+
+unsuppress-warnings
+
+get-module
+
+current-mp
+
+mp-models
+
+current-model
+
+model-warning
+
+one-time-model-warning
+
+no-output
+
+command-output
+
+model-output
+
+mp-running?
+
+set-mp-running
+
+clear-mp-running
+
+remove-model
+
+mp-time
+
+mp-time-ms
+
+get-time 
+
+mp-real-time-management
+
+meta-p-output
+
+max-module-name-length
+
+format-event
+
+current-device-interface
+
+current-devices
+
+define-device
+
+undefine-device
+
+define-interface
+
+undefine-interface
+
+pm-pixels-to-angle
+
+pm-angle-to-pixels
+
+visual-fixation-marker & the setf (visual-fixation-marker)
+
+window-identifier-to-window
+
+determine-exp-window
+
+define-component
+
+get-component
+
+new-symbol
+
+agi-component
+
+create-text-for-exp-window
+
+create-line-for-exp-window
+
+create-button-for-exp-window
+
+open-rpm-window?
+
+string-to-lines
+
+whitespace-p
+
+add-word-characters
+
+chop-string
+
+vision-module methods/slots: optimize-p, vis-loc-slots, view-dist, visicon-updates, visicon, scheduled-proc-display, proc-display-locks, blocked-proc-display,
+                             new-span, tstamp-elapsed, checknew, update-new, finst-span, check-finsts, feat-attended, print-visicon, printed-visicon, 
+                             init-vision-interface, clear-all-finsts, device-update-attended-loc, internal-update-attended-loc, show-focus-p, current-marker,
+                             currently-attended, clof, last-obj, tracked-obj-last-obj, update-tracking-obj-chunk, tracked-obj, tracked-obj-last-feat,
+                             tracked-obj-lastloc
+
+build-vis-locs-for (v-liner objects)
+
+set-visual-center-point 
+
+device-interface methods/slots: pixels->angle-mth, ppi, viewing-distance, angle->pixels-mth
+
+pm-pixels-to-angle
+
+get-chunk-type
+
+chunk-type-slot-name
+
+pprint-ct
+
+pprint-chunk-type-fct
+
+print-all-chunk-types
+
+chunk-type-p-fct
+
+valid-slot-name
+
+valid-query-name
+
+valid-chunk-type-slot
+
+valid-ct-slot
+
+chunk-type-possible-slot-names-fct
+
+extend-possible-slots
+
+add-request-parameter
+
+add-buffer-query
+
+slot-name->mask
+
+slot-name->index
+
+slot-index->name
+
+slot-mask->names
+
+all-chunk-type-names
+
+largest-chunk-type-size
+
+chunk-back-links
+
+set-chunk-back-links
+
+string->name
+
+pprint-a-chunk
+
+pprint-chunks
+
+printed-chunk 
+
+chunks
+
+get-chunk
+
+get-chunk-warn
+
+pprint-chunks-plus
+
+chunk-p-fct
+
+chunk-slots-vector
+
+chunk-documentation
+
+decode-string-names
+
+update-chunks-at-all
+
+update-chunks-on-the-fly
+
+notify-on-the-fly-hooks
+
+delete-chunks-after-run
+
+use-short-copy-names
+
+new-name
+
+release-name
+
+true-chunk-name
+
+get-true-slot-value-name
+
+create-undefined-chunk
+
+internal-create-undefined-chunk
+
+chunk-slot-equal
+
+chunk-equal-test
+
+equal-chunks
+
+chunk-copied-from
+
+chunk-slot-value
+
+chunk-filled-slots-list
+
+set-chunk-slot-value
+
+make-chunk-immutable
+
+mod-chunk
+
+fast-chunk-slot-value-fct
+
+fast-set-chunk-slot-value-fct
+
+fast-mod-chunk-fct
+
+chunk-spec-variable-p
+
+mod-chunk-with-spec-fct
+
+delete-chunk
+
+purge-chunk
+
+create-chunk-alias
+
+eq-chunks-fct
+
+extend-chunks
+
+local-or-remote-function-p
+
+check-act-r-command
+
+handle-evaluate-results
+
+list-act-r-commands
+
+evaluate-act-r-command
+
+dispatch-eval
+
+meta-process slots: meta-p-time, meta-p-model-order, meta-p-models, meta-p-model-count, meta-p-model-name-len, meta-p-default-model,
+                    meta-p-break, meta-p-delayed, meta-p-dynamics, meta-p-start-time, meta-p-start-real-time, meta-p-allow-dynamics,
+                    meta-p-time-function, meta-p-units-per-second, meta-p-slack-function, meta-p-real-time-scale, meta-p-max-time-delta,
+                    meta-p-max-time-maintenance, meta-p-events, meta-p-pre-events, meta-p-post-events, meta-p-next-hook-id, meta-p-hook-table,
+                    meta-p-component-list,
+
+splice-into-list
+
+compare-events
+
+insert-queue-event
+
+conditions-met
+
+delete-event
+
+safe-seconds->ms
+
+need-to-check-updates
+
+schedule-break
+
+schedule-event
+
+update-waiting-events
+
+schedule-event-now
+
+schedule-proc-display
+
+decode-string-names
+
+valid-vis-loc-chunk 
+
+compute-vis-loc-size
+
+add-visicon-features
+
+init-exp-window
+
+delete-visicon-features
+
+delete-all-visicon-features
+
+remove-exp-window
+
+modify-visicon-features
+
+permute-list
+
+act-r-random
+
+randomize-time
+
+randomize-time-ms
+
+act-r-noise
+
+slot-spec-modifier
+
+slot-spec-slot
+
+slot-spec-value
+
+replace-variables (however it expects conses which makes it problematic for remote use)
+
+replace-variables-for-eval
+
+global-modules-table
+
+all-module-names
+
+notified-modules
+
+run-notify-modules
+
+run-over-notify-modules
+
+updating-modules
+
+get-abstract-module
+
+valid-module-name
+
+buffers
+
+buffer-exists
+
+buffer-instance
+
+buffers-module-name
+
+define-buffer
+
+remove-modules-parameters
+
+remove-parameter
+
+uninstall-buffers
+
+undefine-module
+
+get-parameter-struct
+
+valid-parameter-name
+
+parse-buffers
+
+get-parameter-default-value
+
+define-parameter
+
+parse-parameters
+
+install-parameters
+
+install-buffers
+
+define-module
+
+ms->seconds
+
+valid-model-name
+
+with-model
+
+with-model-eval
+
+with-model-fct
+
+dispatch-apply
+
+dispatch-apply-list
+
+dummy-event-function
+
+numbers-list
+
+square-data
+
+sum-list
+
+/-safe
+
+product-list
+
+square-list
+
+simple-system-param-handler (generates a thread-safe command)
+
+real-time-slack (assuming that sleep is...)
+
+buffer-read
+
+output-key
+
+internal-output-speech
+
+internal-output-key
+
+chunk parameter setf functions (not listing them individually)
+
+mean-deviation
+
+correlation
+
+default-button-action
+
+get-parameters
+
+get-parameter-value
+
+external-get-parameter-value
+
+show-buffer-copy
+
+buffer-read-action
+
+printing-module-cbct
+
+show-copy-buffer-trace
+
+set-buffer-chunk
+
+schedule-set-buffer-chunk
+
+overwrite-buffer-chunk
+
+schedule-overwrite-buffer-chunk
+
+goal-focus
+
+mod-focus (safe because the modifications are a list so mod-list-or-spec->mod-spec creates a new spec so there aren't issues with outside access)
+
+act-r-model-tracked-requests
+
+create-model-default-chunk-types-and-chunks
+
+act-r-parameter-users
+
+reset-mp
+
+detect-at-time
+
+audio-module slots: digit-duration, digit-detect-delay, digit-recode-delay, tone-detect-delay,
+                    tone-recode-delay, audicon, overstuff-loc, last-stuffed-event, loc-failure, unstuff-loc, unstuff-event
+             functions/methods: purge-old-sounds, current-audicon, detectable-audicon, new-sound-event, new-tone-sound, new-digit-sound, new-word-sound,
+                                update-sound-evt, audio-event-ended, find-sound-failure, aural-location-unstuff-check, find-sound, stuff-sound-buffer,
+                                print-audicon, printed-audicon
+
+speech-module slots: syllable-rate, subvocalize-deiay, char-per-sllable, art-time-ht
+              functions/methods: register-art-time, register-articulation-time, get-art-time, get-articulation-time
+
+erase-buffer
+
+unstuff-buffer
+
+set-buffer-failure
+
+store-m-buffer-chunk
+
+remove-m-buffer-chunk
+
+get-m-buffer-chunks
+
+remove-all-m-buffer-chunks
+
+buffer-chunk
+
+printed-buffer-chunk
+
+buffer-status
+
+printed-buffer-status
+
+complete-request
+
+complete-all-buffer-requests
+
+complete-all-module-requests
+
+circular-references
+
+register-subsymbolic-parameters
+
+buffer-params-handler
+
+current-keyboard
+
+update-keyboard-device
+
+clear-keyboard-component
+
+set-model-default-keyboard
+
+remove-model-keyboard
+
+keyboard-size
+
+keyboard-left-home-positions
+
+keyboard-right-home-positions
+
+keyboard-keypad-positions
+
+internal-keyboard-interface
+
+polar-move-xy
+
+distance=
+
+direction=
+
+xy-to-polar
+
+dist
+
+minjerk-dist
+
+find-mouse
+
+set-mouse
+
+internal-move-mouse
+
+click-the-mouse
+
+internal-click-mouse
+
+initialize-mouse
+
+remove-mouse
+
+internal-mouse-interface
+
+slot-value-from-index
+
+===========================================================
+Safe assuming user/interface functions are also safe:
+
+add-new-model (assuming all component model create functions are also safe)
+
+get-time (assumes get-internal-real-time is safe)
+
+filter-test  (assumes that if there's an output filter it is safe)
+filter-output-events
+event-displayed-p 
+mp-show-queue
+
+install-device (assumes all interface-remove, device-remove, interface-init, and device-init functions safe)
+
+remove-device (assumes all interface-remove and device-remove functions safe)
+
+signal-device (assumes that all device-interface functions safe)
+
+undefine-component (assumes the component-destroy is safe)
+
+vv-handle-click (assumes any user functions for a button are safe)
+
+signal-exp-window (depends on vv-handle-click)
+
+build-string-feats (depends on a width function in the dialog-item)
+
+
+internal-define-chunks (depends on chunk parameter default functions)
+define-chunks
+chunk parameter accessors
+
+
+copy-chunk (depends on chunk parameter copy functions)
+
+merge-chunks (depends on the parameter merge functions and the notify-on-the-fly functions)
+
+normalize-chunk-names (depends on the notify-on-the-fly functions)
+
+process-parameters (depend on module definition functions)
+instantiate-module
+reset-module
+secondary-reset-module
+tertiary-reset-module
+query-module
+warn-module?
+warn-module
+request-module
+buffer-mod-module
+delete-module
+notify-module
+update-the-module
+run-notify-module
+run-over-notify-module
+module-m-buffer-search
+module-m-buffer-offset
+m-buffer-offset
+m-buffer-search
+clear-buffer-process (not itself safe and needs to be called with the buffer lock held but safe in that context)
+clear-buffer
+
+ssp (safe assuming user provided test and handler functions are safe)
+show-all-system-parameters
+create-system-parameter
+remove-system-parameter
+set-system-parameter-value
+get-system-parameters
+get-system-parameter-struct
+valid-system-parameter-name
+set-system-parameters
+test-and-set-system-parameter-value
+set-parameter-value
+test-and-set-parameter-value
+set-parameters
+show-all-parameters
+set-or-get-parameters
+sgp
+
+reset-model (chunk parameter defaults function, module reset functions, module parameter function)
+reset
+
+query-buffer
+
+=============================================================
+Will be safe once the environment connection is dealt with...
+
+select-rpm-window (assumes the envrionment communication is safe)
+select-exp-window
+close-rpm-window
+close-exp-window
+close-all-exp-windows
+open-exp-window
+
+make-rpm-window (assumes check-with-environment-for-visible-virtuals and sending to environment is safe which it isn't...)
+
+device-move-cursor-to (assumes environment communication is safe)
+
+vv-handle-click (if it's a visible virtual button both the environment communication and the user action functions need to be safe)
+
+signal-exp-window (depends on vv-handle-click)
+
+add-visual-items-to-rpm-window (communication is safe)
+remove-visual-items-from-rpm-window 
+remove-all-items-from-rpm-window 
+modify-line-for-rpm-window
+
+
+add-items-to-exp-window (corresponding -rpm-window functions need to be safe)
+add-text-to-exp-window 
+add-button-to-exp-window
+add-line-to-exp-window
+remove-items-from-exp-window
+clear-exp-window
+modify-line-for-exp-window 
+
+================================================================
+Safe because some capabilities are not yet available
+
+build-vis-locs-for (text & button items) : (optimize-p must be t also assumes that width-fct is a valid function or dispatch name)
+
+
+================================================================
+Slots that are set on struct/object creation and never changed
+
+act-r-model-chunk-types-info
+
+act-r-chunk-type-slots
+
+act-r-chunk-type-name 
+
+act-r-chunk-type-initial-spec 
+
+
+evt-action
+
+evt-model
+
+evt-params
+
+evt-output
+
+evt-module
+
+evt-destination
+
+evt-details
+
+evt-mp
+
+evt-precondition
+
+act-r-periodic-event-id
+
+act-r-module-name
+
+act-r-module-buffers
+
+act-r-module-version
+
+act-r-module-documentation
+
+act-r-module-creation
+
+act-r-module-reset
+
+act-r-module-query
+
+act-r-module-request
+
+act-r-module-buffer-mod
+
+act-r-module-params
+
+act-r-module-delete
+
+act-r-module-notify-on-clear
+
+act-r-module-update
+
+act-r-module-secondary-reset
+
+act-r-module-tertiary-reset
+
+act-r-module-warn
+
+act-r-module-search
+
+act-r-module-offset
+
+act-r-module-run-notify
+
+act-r-module-run-over-notify
+
+act-r-parameter-default
+
+act-r-parameter-param-name
+
+act-r-parameter-owner
+
+act-r-parameter-valid-test
+
+act-r-parameter-warning
+
+act-r-parameter-details
+
+act-r-parameter-test
+
+act-r-model-code (when the *define-model-lock* is also held)
+
+act-r-component-instance
+
+act-r-component-name
+
+act-r-component-before-reset
+
+act-r-component-after-reset
+
+act-r-component-destroy
+
+act-r-component-clear-all
+
+act-r-component-model-create
+
+act-r-component-model-destroy
+
+act-r-component-version
+
+act-r-component-documentation
+
+===========================================================
+safe if used on the current-model-struct 
+
+act-r-model-buffers
+
+================================================================
+safe if used on the result of buffer-instance and the buffer-lock is held
+
+
+act-r-buffer-lock
+
+act-r-buffer-module
+
+act-r-buffer-chunk
+
+act-r-buffer-flags
+
+act-r-buffer-requested
+
+act-r-buffer-copy
+
+act-r-buffer-multi
+
+act-r-buffer-status-printing 
+
+================================================================
+buffer struct slots set at creation so always safe to read
+
+act-r-buffer-parameter-name
+act-r-buffer-name
+act-r-buffer-spread
+
+================================================================
+event structs have some slots that can be changed during scheduling
+if the event is periodic, dynamic, or scheduled "after" something
+
+These are protected by the meta-p-schedule-lock
+
+evt-mstime
+evt-time
+evt-priority
+
+
+These are not public so don't worry about them and they're
+only accessed from within meta-p-schedule-lock (ed) code.
+
+evt-wait-condition (not public)
+
+evt-dynamic (not public)
+
+=================================================================
+Will be safe when sub-components are made really safe
+
+chunk-type-fct 
+
+=================================================================
+Destructive functions that are safe as long as the same thing isn't
+manipulated in multiple threads
+
+splice-into-list-des
+
+splice-into-position-des
+
+==================================================================
+Chunk-specs can be destructively modified since they're just a structure,
+but as long as one only uses the provided accessor functions and doesn't
+try to use the same items in separate threads they're fine.
+
+
+spec-slot-op
+
+spec-slot-name
+
+spec-slot-value
+
+slot-spec-modifier
+
+slot-spec-slot
+
+slot-spec-value
+
+chunk-name-to-chunk-spec
+
+add-slot-spec-to-chunk-spec
+
+process-slots-specs
+
+define-chunk-spec
+
+chunk-difference-to-chunk-spec
+
+chunk-spec-filled-slots
+
+chunk-spec-empty-slots
+
+process-query-specs
+
+define-query-spec
+
+chunk-spec-slots
+
+slot-spec-to-list
+
+chunk-spec-slot-spec
+
+slot-in-chunk-spec-p
+
+instantiate-chunk-spec (requires conses which is also problematic for remote use)
+
+instantiate-query-spec (also conses...)
+
+verify-single-explicit-value
+
+chunk-match-signature
+
+slots-vector-match-signature
+
+compare-slots-vector-to-signature
+
+compare-chunk-to-signature
+
+reprocess-chunk-spec
+
+chunk-slot-not-equal
+
+safe>
+
+safe>=
+
+safe<
+
+safe<=
+
+test-chunk-slots (needs conses, but not an external function so should be fine)
+
+match-chunk-spec-p (safe assuming the test functions are all safe and currently takes keyword params which isn't good for remote)
+find-matching-chunks
+
+pprint-chunk-spec
+
+printed-chunk-spec 
+ 
+slot-specs-to-chunk-spec-list
+
+slot-specs-to-chunk-spec
+
+chunk-spec-to-chunk-def
+
+merge-chunk-specs
+
+mod-list-or-spec->valid-mod-spec
+
+mod-buffer-chunk, schedule-mod-buffer-chunk (if passed a list always safe it's only when passed a chunk-spec that it could be an issue)
+
+query-list-or-spec->valid-query-spec
+
+=============================================================================
+for dealing with chunk-specs remotely they get converted to/from an id using
+a table in a new component using these functions
+
+id-to-chunk-spec
+
+chunk-spec-to-id 
+
+release-chunk-spec-id
+
+=============================================================================
+Scheduling commands have some general issues for remote access (lots of keyword parameters
+and return an event structure) but can still be safe for threading with the big
+issue being whether the action itself (and any precondition) is also thread safe
+
+skip-unnecessary-events
+
+set-mp-clock
+
+run-one-event
+
+schedule-event-relative
+
+run-sched-queue
+
+schedule-simple-event
+
+schedule-simple-event-relative
+
+run-terminated
+
+send-run-terminated-events
+
+indicate-running
+
+run (the stopping condition to run-sched-queue is called with meta-p-schedule-lock held)
+run-until-condition
+run-full-time
+run-until-time
+run-n-events
+
+schedule-event-now
+
+schedule-simple-event-now
+
+schedule-event-after-module
+
+schedule-event-after-change
+
+periodic-action
+
+schedule-periodic-event
+
+schedule-break-realtive
+
+schedule-break-after-module
+
+schedule-break-after-all
+
+add-pre-event-hook
+
+add-post-event-hook
+
+delete-event-hook
+
+
+
+==========================================================================
+accessor and setf for chunk parameters are safe because they're
+protected by the chunk's lock.  Not listing all of the currently defined
+parameters here.
+
+
+
+
+
+
+==========================================================================
+Things that are safe assuming file access is safe since may have user given paths:
+
+mean-deviation
+correlation
+
+===========================================================================
+Safe assuming file access is safe and the file contents are also safe:
+
+reload
+
+load-act-r-model
+
+===========================================================================
+Interfaces depend on the device-interface class which holds the table of defined
+interfaces.  That table is protected by the device-tables-lock.  The interface
+structure is only used internally and instances are not modified once created.
+A specific interface being safe depends on the functions provided for it also
+being safe.
+
+interface-name
+interface-init
+interface-remove
+interface-single-device
+
+
+============================================================================
+Functions in Declarative module
+
+all of the 'special' functions for the chunk parameters
+
+dm-fm-rh
+
+hash-chunk-contents
+
+reset-dm-module
+
+secondary-reset-dm-module
+
+tertiary-reset-dm-module
+
+remove-old-dm-finsts
+
+dm-query-request (potential issue on recently-retrieved if the chunk changes while the query is happening...)
+
+dm-request
+
+dm-act-level
+
+start-retrieval (safe assuming retrieval-set-hook and retrieval-request-hook functions are safe)
+
+update-declarative-finsts
+
+retrieved-chunk (assuming the retrieved-chunk-hook is safe)
+
+all-dm-chunks
+
+all-dm-chunk-types
+
+check-declarative-stuffing
+
+stuff-declarative-chunk
+
+retrieval-failure (assuming the retrieved-chunk-hook is safe)
+
+dm-params
+
+merge-chunk-into-dm (assuming the chunk-merge-hook is safe)
+
+add-chunk-into-dm (assuming the chunk-add-hook is safe)
+
+add-dm, add-dm-fct, add-dm-external (assuming the chunk-add-hook is safe)
+
+sort-for-binding-dm
+
+merge-dm, merge-dm-fct (assuming the chunk-merge-hook is safe)
+
+activation-offsets (assuming any offset hooks are safe)
+
+compute-references
+
+base-level-activation (assuming bl-hook safe if specified)
+
+compute-sji
+
+spreading-activation
+
+chunk-fan-j-to-i
+
+chunks-similarity
+
+partial-matching
+
+activation-noise (assuming noise-hook is safe if specified)
+
+compute-activation-latency
+
+==========================================================
+dm-command functions
+
+get-all-chunk-sjis
+
+get-all-chunk-similarities
+
+dm-chunk-parameters-fct
+
+add-sji-fct
+
+sji-fct
+
+similarity-fct
+
+clear-dm
+
+dm-fct
+
+get-base-level-fct
+
+sdm-fct
+
+set-similarities-fct 
+
+set-bl
+
+set-all-base-levels
+
+set-base-levels-fct
+
+even-references
+
+adapt-references
+
+dm-chunk-parameters-fct
+
+set-dm-chunk-parameters-fct
+
+sdp-fct
+
+reset-declarative-finsts
+
+print-dm-finsts
+
+print-chunk-activation-details
+
+print-activation-trace
+
+print-chunk-activation-trace-fct
+
+saved-activation-history
+
+whynot-dm-fct
+whynot-dm-internal
+
+simulate-retrieval-request-fct
+simulate-retrieval-request-plus-seed-fct
+
+================================================
+imaginal module code
+
+create-imaginal
+
+imaginal-query
+
+set-imaignal-free
+
+set-imaginal-error
+
+imaginal-request
+
+imaginal-mod-request
+
+imaginal-params
+
+imaginal-reset
+
+
+================================================
+perceptual-history module
+
+monitor-visicon-updates
+
+monitor-audicon-updates
+
+reset-perceptual-history
+
+delete-perceptual-history
+
+perceptual-history-params
+
+get-audicon-history
+
+get-visicon-history
+
+show-visicon-history
+
+show-audicon-history
+
+
+================================================
+vision module methods that need to be called with
+the marker-lock held:
+
+set-current-marekr
+
+attend-to-object
+
+update-tracking-mth
+
+remove-tracking
+
+===============================================
+keyboard methods which assume a keyboard isn't modified
+after creation and keys are only specified when it is
+initialized
+
+slots: key->cmd-ht, key->loc-ht, loc->key-array, left-home, right-home, keypad
+
+specify-key
+
+loc->key
+
+key->cmd
+
+key->loc
+
+
+===============================================
+motor module, mouse, and keyboard hand access.  Hands are set at module creation
+time and each has a lock to protect access.  So, assuming
+that the motor module's left-hand and right-hand aren't
+directly changed holding the hand-lock makes these slots
+safe:
+
+device
+
+loc
+
+fingers
+
+These methods are safe based on holding that lock:
+
+set-default-hand-positions
+
+finger-loc
+
+move-finger
+
+move-hand
+
+set-hand-device
+
+get-hand-device
+
+device-for-hand
+
+move-a-hand
+
+move-a-finger
+
+finger-loc-m
+
+home-hands
+
+hand-to-home
+
+hand-to-keypad
+
+start-hands-at-home
+
+start-hand-at-keypad
+
+point-hand-at-key
+
+start-hand-at-key
+
+set-hand-location-fct
+
+start-hand-at-mouse
+
+hand-to-mouse
+
+click-mouse
+
+======================================================
+production structures
+
+These slots set on creation and no protection needed when accessed from get-production:
+
+text, name, documentation, variables, actions, lhs, rhs, lhs-buffers, rhs-buffers, conflict-code, constants, binds, others, searches, search-binds, search-others,
+selection-code, implicit, 
+
+These slots are protected by the production-lock (which is recursive):
+
+disabled, parameter-values, bindings (indirectly protected in the low level conflict resolution functions by grabbing the lock in pmatches-internal and conflit-resolution)
+partial-matched-slots (also indirect with respect to production compilation and conflict resolution)
+break, 
+buffer-indices and standard-rep (indirect through comple-productions and check-for-duplicate-productions)
+conflict-val, failure-condition (indirect through conflict resolution and pmatches internal)
+
+These functions must be protected by the production-lock before calling
+
+print-production-text
+
+All of the production parameters created with extend-productions are protected
+since the access and setf macros grab the production lock.  So they're thread
+safe as long as the default-function (if provided) is safe.
+
+=====================================================
+procedural-module slots:
+
+protected by p-table-lock:
+
+  p-table, productions
+
+protected by param-lock:
+
+  ppm
+
+protected by state-lock:
+
+protected by cr-lock:
+  used-search-buffers, current-p, buffer-lookup, buffer-lookup-size, slot-lookup, last-cr-time, search-buffer-table, buffer-indices, temp-search,
+  delayed-resolution
+
+
+=====================================================
+procedural related functions
+
+get-production
+
+productions-list
+
+all-productions
+
+penable-internal
+
+pdisable-internal
+
+new-production-name
+
+print-production
+
+print-instantiation
+
+printed-production-text
+
+production-statement-text
+
+pbreak-fct
+
+punbreak-fct
+
+pmatches-internal
+
+whynot
+
+pmatches
+
+production-failure-reason
+
+whynot-internal
+
+un-delay-conflict-resolution
+
+production-parameter-fct
+
+parameters-fct
+
+spp
+
+used-production-buffers
+
+pp-fct
+
+=========================================================
+utility related functions
+
+all the utility module parameter slots: iu, dat, egs, esc, ult (trace), ul, utility-hook, reward-hook, offsets, reward-notify-hooks, nu, alpha, ut, history
+
+get-default-u
+
+get-default-action-time
+
+compute-utility (assuming hook functions safe)
+
+linear-update-utility
+
+note-production-selection
+
+learn-parameters
+
+reset-utility-module
+
+propagate-reward (assuming hook functions safe)
+
+=========================================================
+central parameters module 
+
+locks the esc, er, and ol parameter accessors.
+
+========================================================
+history recorder component
+
+
+record-history
+
+get-history-data
+
+process-history-data
+
+history-data-available
+
+save-history-data (assuming file access safe)
+
+stop-recording-history
+
+add-buffer-trace-notes

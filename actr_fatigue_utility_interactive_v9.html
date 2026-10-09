@@ -1,0 +1,1176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ACT-R + Fatigue Module Utility Explorer</title>
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+  <style>
+    :root { --border: #ddd; --bg: #fafafa; --text: #111; --muted: #666; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; color: var(--text); margin: 0; }
+    header { padding: 18px 18px 10px 18px; border-bottom: 1px solid var(--border); background: white; }
+    header h1 { font-size: 18px; margin: 0 0 6px 0; }
+    header p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.35; max-width: 1100px;}
+    main { display: grid; grid-template-columns: 420px 1fr; gap: 14px; padding: 14px 18px 18px 18px; }
+    @media (max-width: 980px) { main { grid-template-columns: 1fr; } }
+
+    .panel { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+    .panel h2 { margin: 0 0 10px 0; font-size: 14px; }
+
+    .row { display: grid; grid-template-columns: 22px 1fr 78px; gap: 10px; align-items: center; margin: 8px 0; }
+    .row2 { display: grid; grid-template-columns: 1fr 110px; gap: 10px; align-items: center; margin: 8px 0; }
+    .row3 { display: grid; grid-template-columns: 1fr; gap: 6px; margin: 8px 0; }
+    .row-seed {display: grid; grid-template-columns: 1fr 110px auto; gap: 10px; align-items: center; margin: 8px 0;}
+    .row-seed button {white-space: nowrap;}
+
+    label { font-size: 13px; }
+    input[type="range"] { width: 100%; }
+    input[type="number"], input[type="text"], select {
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 8px;
+      background: white;
+      font-size: 13px;
+    }
+    select { padding-right: 28px; }
+
+    .value { font-variant-numeric: tabular-nums; font-size: 12px; color: var(--muted); text-align: right; }
+    .subtle { font-size: 12px; color: var(--muted); line-height: 1.35; }
+    .controls { display: grid; }
+
+    .btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    button { border: 1px solid var(--border); background: white; border-radius: 8px; padding: 8px 10px; font-size: 13px; cursor: pointer; }
+    button:hover { background: #f3f3f3; }
+    button.danger { border-color: #f0b1b1; }
+    button.danger:hover { background: #fff1f1; }
+
+    #plot { height: 560px; }
+    #plotMicrolapse { height: 360px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+
+    details { margin-top: 10px; }
+    summary { cursor: pointer; font-size: 13px; }
+      input[type="checkbox"] { width: auto; justify-self: end; }
+  
+    .toggle { justify-self: end; width: 110px; border-radius: 999px; font-weight: 600; }
+    .toggle.on { background: #e9f7ef; border-color: #b7e1c5; }
+    .toggle.off { background: #f5f5f5; border-color: #ddd; color: #666; }
+
+  
+    .row-sched { display: grid; grid-template-columns: 1fr 110px auto; gap: 10px; align-items: center; margin: 8px 0; }
+    .row-sched button { white-space: nowrap; }
+
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display: none; align-items: center; justify-content: center; padding: 18px; z-index: 9999; }
+    .modal { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 12px; width: min(920px, 100%); max-height: 90vh; overflow: auto; }
+    .modal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .modal-title { font-size: 14px; font-weight: 700; margin: 0 0 4px 0; }
+    #sleepScheduleText { width: 100%; min-height: 120px; box-sizing: border-box; border: 1px solid var(--border); border-radius: 8px; padding: 8px; background: white; font-size: 13px; }
+    #sleepPlot { height: 320px; margin-top: 10px; }
+
+  </style>
+</head>
+<body>
+<header>
+  <h1>ACT-R + Fatigue Module Utility Explorer</h1>
+  <p>
+    Compare multiple “scenarios” (e.g., phases) by adding additional parameter sets and biomath predictions. <br/>
+    Each scenario plots <b>Utility Threshold (UT)</b> and <b>Current Utility (U)</b> over <b>time on task</b>, as well as the <b>Probability of Microlapse</b>.
+    <br/>
+    Equations used: <br/>
+    <span class="mono">UT(t) = ut × (1 − utbmc × biomath) × (1 + minutes)^utmc</span> <br/>
+    <span class="mono">U(t) = iu × [(1 − fpbmc × biomath) × (1 + minutes)^fpmc] + egs</span> <br/>
+    <span class="mono">P(microlapse at t) = P(U &lt UT) = P(egs &lt UT − μ)</span> <br/>
+    Time (t) is sampled at a fixed 1-second step.
+  </p>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Global settings</h2>
+    <div class="row2">
+      <label for="maxMinutes">Max time on task (minutes)</label>
+      <input id="maxMinutes" type="number" min="1" max="600" step="1" value="60" />
+    </div>
+    <div class="row-seed">
+      <label for="seed">Noise seed<br/>(shared across scenarios)</label>
+      <input id="seed" type="number" min="1" max="999999" step="1" value="1" />
+      <button id="resample" type="button">Resample noise</button>
+    </div>
+
+    <h2 style="margin-top:14px;">Scenario editor</h2>
+    <details>
+      <summary>Scenario controls</summary>
+      <div class="subtle" style="margin-top:8px;">
+        Add scenarios to overlay additional UT/U curves with different parameters and biomath prediction.
+        All scenarios share the same noise seed so differences are easier to compare.
+      </div>
+    </details>
+    <div class="row2">
+      <label for="scenarioSelect">Select scenario</label>
+      <select id="scenarioSelect"></select>
+    </div>
+
+    <div class="row3">
+      <label for="scenarioName">Scenario name</label>
+      <input id="scenarioName" type="text" value="Scenario 1"/>
+    </div>
+
+    <div class="row2" id="biomathRow">
+      <label for="scenarioBiomath">Biomath prediction (scalar)</label>
+      <input id="scenarioBiomath" type="number" min="0" max="50" step="0.01" value="3.84" />
+    </div>
+
+    <div class="row-sched">
+      <label>Sleep schedule</label>
+      <button id="scenarioScheduleToggle" class="toggle off" type="button" aria-pressed="false">OFF</button>
+      <button id="editSchedule" type="button">Edit…</button>
+    </div>
+
+    <div class="row2" id="boutHourRow">
+      <label for="scenarioBoutHour">Bout hour (hours)</label>
+      <input id="scenarioBoutHour" type="number" min="0" max="500" step="0.01" value="8" />
+    </div>
+
+    <div class="row2">
+      <label>Fatigue Module</label>
+      <button id="scenarioFatigueToggle" class="toggle on" type="button" aria-pressed="true">ON</button>
+    </div>
+
+    <div class="row2">
+      <label>Parameter Settings:</label>
+    </div>
+
+    <div class="subtle" style="margin-top:6px;">
+      Use the checkbox to “unlock” a parameter for manipulation. If unchecked, the scenario uses the suggested default value.
+    </div>
+
+    <div class="controls" id="paramControls"></div>
+
+    <!--
+    <div class="btns">
+      <button id="unlockAll">Unlock all (this scenario)</button>
+      <button id="lockAll">Lock all (this scenario)</button>
+    </div>
+    -->
+
+    <div class="btns">
+      <button id="addScenario">Add scenario (copy current)</button>
+      <button id="removeScenario" class="danger">Remove scenario</button>
+      <button id="resetScenario">Reset scenario to defaults</button>
+    </div>
+
+    <details>
+      <summary>How scenario “locking” works</summary>
+      <div class="subtle" style="margin-top:8px;">
+        Each scenario stores a biomath scalar, parameter values, a per-parameter lock state, and a fixed color.
+        Locked parameters revert to suggested defaults (so you can isolate effects cleanly).
+      </div>
+    </details>
+  </section>
+
+  <section class="panel">
+    <h2>Utility vs time on task</h2>
+    <div class="subtle">
+      Legend entries are labeled by scenario name, with “— U” for current utility and “— UT” for threshold.
+      UT traces use a dashed line style; each scenario uses a consistent color for both U and UT.
+    </div>
+    <div id="plot"></div>
+    <h2 style="margin-top:14px;">Microlapse probability vs time on task</h2>
+    <div id="plotMicrolapse"></div>
+
+  </section>
+</main>
+
+
+<!-- Sleep schedule modal (scenario-specific) -->
+<div id="sleepModalOverlay" class="modal-overlay" style="display:none;">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">Sleep schedule & biomath preview</div>
+        <div class="subtle">
+          Enter wake/sleep pairs as hours since day 1 midnight. Examples:
+          <span class="mono">((8 23) (31 46))</span> or <span class="mono">[[8, 23], [31, 46]]</span>.
+          Any mix of parentheses/brackets/commas is fine.
+        </div>
+      </div>
+      <button id="sleepModalClose" type="button">Close</button>
+    </div>
+
+    <div style="margin-top:10px;">
+      <label for="sleepScheduleText">
+        <details>
+          <summary>Schedule</summary>
+          <div class="subtle" style="margin-bottom:8px;">
+            Schedule for testing: ((5 21) (29 45) (53 69) (77 93) (101 117) (125 141) (149 165) (173 189) (197 216) (220 240) (244 264) 
+            (268 285) (293 309) (317 336) (340 360) (364 384) (388 405) (413 429) (437 456) (460 480) (484 504) (508 525) (533 549) (557 576) 
+            (580 600) (604 624) (628 645) (653 669) (677 693) (701 717) (725 741) (749 765) (773 789) (797 813) (821 837) (845 861) (869 885) (893 909)) </br>
+            Testing Bouts: Baseline = 130; Stress = 514; Recovery = 898
+          </div>
+        </details>
+      </label>
+      <textarea id="sleepScheduleText" class="mono" placeholder="((8 23) (31 46))"></textarea>
+    </div>
+
+    <div class="btns">
+      <button id="sleepApply" type="button">Apply schedule</button>
+      <button id="sleepClear" type="button" class="danger">Clear schedule</button>
+    </div>
+
+    <div id="sleepError" class="subtle" style="color:#b00020; min-height:16px;"></div>
+
+    <div id="sleepPlot"></div>
+    <div class="subtle">Tip: the marker indicates the current bout hour for the selected scenario.</div>
+  </div>
+</div>
+
+<script>
+const SUGGESTED = {
+  egs: 0.25,
+  ut:  2.064,  //PVT defaults are 2.2
+  iu:  2.292,  //PVT defaults are 2.6
+  utmc: -0.01,
+  utbmc: 0.01,
+  fpmc: -0.05,
+  fpbmc: 0.02
+};
+
+const PARAM_META = [
+  { key:'egs',  label:'egs (utility noise)',                min:0.00, max:0.40, step:0.01  },
+  { key:'ut',   label:'ut (initial utility threshold)',     min:2.00, max:3.00, step:0.01  },
+  { key:'iu',   label:'iu (initial utility)',               min:2.00, max:3.00, step:0.01  },
+  { key:'utmc', label:'utmc (time-on-task exponent for UT)', min:-0.10, max:0.00, step:0.001 },
+  { key:'utbmc',label:'utbmc (biomath coefficient for UT)',  min:0.00,  max:0.04, step:0.001 },
+  { key:'fpmc', label:'fpmc (time-on-task exponent for FP)', min:-0.10, max:0.00, step:0.001 },
+  { key:'fpbmc',label:'fpbmc (biomath coefficient for FP)',  min:0.00,  max:0.04, step:0.001 }
+];
+
+// Distinct-first palette (Okabe–Ito core + a few add-ons)
+const PALETTE = [
+  "#0072B2", // blue
+  "#E69F00", // orange
+  "#CC79A7", // reddish purple
+  "#D55E00", // vermillion
+  "#56B4E9", // sky blue
+  "#F0E442", // yellow
+  "#009E73", // green
+  "#000000", // black
+  "#999999", // gray
+  "#332288", // indigo
+  "#AA4499", // purple
+  "#117733"  // dark green
+];
+
+let nextColorIndex = 0;
+function pickNextColor() {
+  const c = PALETTE[nextColorIndex % PALETTE.length];
+  nextColorIndex += 1;
+  return c;
+}
+
+function hexToRGBA(hex, alpha) {
+  const h = hex.replace('#','');
+  const r = parseInt(h.substring(0,2), 16);
+  const g = parseInt(h.substring(2,4), 16);
+  const b = parseInt(h.substring(4,6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+// ---------------- Sleep schedule -> biomath computation (ported from fatigue.lisp McCauley simplified model) ----------------
+const BIOMATH_DEFAULTS = {
+  // initial conditions (defaults from set-schedule in fatigue.lisp)
+  p0: 3.841432,
+  u0: 38.509212,
+  k0: 0.019455,
+
+  // model parameters (biomath-model-mccauley-simplified in fatigue.lisp)
+  alphaw: -0.028,
+  alphas: -0.26,
+  betaw: -0.26,
+  betas: -0.26,
+  muw: 0.33,
+  mus: -1.5,
+  etaw: 0.0074,
+  tau: 24.0,
+  fi1: 21.2,
+  Wc: 20.2,
+  Ac: 20.2 / 24,
+  lambdas: -0.49,
+  lambdaw: 0.49,
+  ksi: 1.09,
+
+  // precision in fatigue.lisp is (/ .05 3) hours = 1 minute
+  dtHours: 1 / 60
+};
+
+// derived parameter (matches etas initform in fatigue.lisp)
+BIOMATH_DEFAULTS.etas = ((BIOMATH_DEFAULTS.Wc / 24) / ((BIOMATH_DEFAULTS.Wc / 24) - 1)) * BIOMATH_DEFAULTS.etaw;
+
+function parseSleepSchedule(input) {
+  // Accepts Lisp-like: ((8 23) (31 46))
+  // JS/Python-like: [[8, 23], [31, 46]]
+  // Mixtures / missing outer brackets: (8 23) (31 46) OR 8 23 31 46
+  const txt = (input || '').trim();
+  if (!txt) return [];
+
+  const matches = txt.match(/-?\d*\.?\d+(?:[eE][-+]?\d+)?/g);
+  if (!matches || matches.length < 2) return [];
+
+  const nums = matches.map(Number).filter(n => Number.isFinite(n));
+  if (nums.length % 2 !== 0) {
+    throw new Error(`Schedule needs an even number of values (wake/sleep pairs). Found ${nums.length}.`);
+  }
+
+  const pairs = [];
+  for (let i = 0; i < nums.length; i += 2) {
+    pairs.push([nums[i], nums[i + 1]]);
+  }
+
+  // Basic validation
+  pairs.forEach((p, idx) => {
+    const w = p[0], s = p[1];
+    if (!(s > w)) throw new Error(`Pair ${idx+1}: sleep time must be greater than wake time (got ${w} → ${s}).`);
+  });
+
+  return pairs;
+}
+
+function ctCircadian(tHr) {
+  const { tau, fi1 } = BIOMATH_DEFAULTS;
+  return Math.sin(2 * Math.PI * ((tHr - fi1) / tau));
+}
+
+function computeBiomathSeriesFromSchedule(pairsHours) {
+  // Returns biomath performance p(t) (the "p" variable in fatigue.lisp tables) for each minute.
+  // Implementation matches the Euler stepping structure of dpw/dps/kappa/du/g functions.
+  if (!pairsHours || pairsHours.length === 0) return null;
+
+  const dt = BIOMATH_DEFAULTS.dtHours;
+
+  // Convert schedule to minutes for stable stepping
+  const pairsMin = pairsHours.map(([w, s]) => [Math.round(w * 60), Math.round(s * 60)]);
+
+  let p = BIOMATH_DEFAULTS.p0;
+  let u = BIOMATH_DEFAULTS.u0;
+  let k = BIOMATH_DEFAULTS.k0;
+
+  let tMin = pairsMin[0][0];
+
+  const tArr = [tMin];
+  const pArr = [p];
+
+  const gSleepConst = (BIOMATH_DEFAULTS.alphas * BIOMATH_DEFAULTS.betas) / BIOMATH_DEFAULTS.etas;
+
+  function stepAwake() {
+    const tHr = tMin / 60;
+    const ct = ctCircadian(tHr);
+    const g = BIOMATH_DEFAULTS.ksi * k * (BIOMATH_DEFAULTS.muw + ct);
+
+    // Update p using current u,k (explicit Euler)
+    p = p + dt * (BIOMATH_DEFAULTS.alphaw * (p + BIOMATH_DEFAULTS.betaw * u) + g);
+
+    // Update u, k
+    u = u + dt * (BIOMATH_DEFAULTS.etaw * u);
+    k = k + dt * (BIOMATH_DEFAULTS.lambdaw * k * (1 - k));
+
+    tMin += 1;
+    tArr.push(tMin);
+    pArr.push(p);
+  }
+
+  function stepSleep() {
+    const tHr = tMin / 60;
+    const ct = ctCircadian(tHr);
+    const g = gSleepConst + k * (BIOMATH_DEFAULTS.mus + ct);
+
+    p = p + dt * (BIOMATH_DEFAULTS.alphas * (p + BIOMATH_DEFAULTS.betas * u) + g);
+
+    u = u + dt * (1 + BIOMATH_DEFAULTS.etas * u);
+    k = k + dt * (BIOMATH_DEFAULTS.lambdas * k);
+
+    tMin += 1;
+    tArr.push(tMin);
+    pArr.push(p);
+  }
+
+  for (let i = 0; i < pairsMin.length; i++) {
+    const [wakeMin, sleepMin] = pairsMin[i];
+
+    // If there is a gap (shouldn't happen in normal schedules), jump to wake
+    if (tMin < wakeMin) {
+      tMin = wakeMin;
+      tArr.push(tMin);
+      pArr.push(p);
+    }
+
+    // Awake segment: wake -> sleep
+    while (tMin < sleepMin) stepAwake();
+
+    // Sleep segment: sleep -> next wake
+    if (i < pairsMin.length - 1) {
+      const nextWakeMin = pairsMin[i + 1][0];
+      while (tMin < nextWakeMin) stepSleep();
+    }
+  }
+
+  const minHr = tArr[0] / 60;
+  const maxHr = tArr[tArr.length - 1] / 60;
+
+  return { tMin: tArr, p: pArr, minHr, maxHr };
+}
+
+function nearestIndex(sortedArr, x) {
+  let lo = 0, hi = sortedArr.length - 1;
+  if (x <= sortedArr[0]) return 0;
+  if (x >= sortedArr[hi]) return hi;
+
+  while (lo < hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (sortedArr[mid] < x) lo = mid + 1;
+    else hi = mid;
+  }
+  if (sortedArr[lo] === x) return lo;
+  const prev = lo - 1;
+  return (Math.abs(sortedArr[lo] - x) < Math.abs(sortedArr[prev] - x)) ? lo : prev;
+}
+
+function computeBiomathAtHour(sc, hour) {
+  if (!sc || !sc.biomathTable || !sc.biomathTable.tMin || sc.biomathTable.tMin.length === 0) return null;
+  const target = Math.round(hour * 60);
+  const idx = nearestIndex(sc.biomathTable.tMin, target);
+  return sc.biomathTable.p[idx];
+}
+
+function syncScenarioBiomath(sc) {
+  // Keep sc.biomath consistent with either manual or schedule mode.
+  if (sc.useSleepSchedule && sc.biomathTable) {
+    const bh = Number.isFinite(sc.boutHour) ? sc.boutHour : 8.0;
+    sc.biomathComputed = computeBiomathAtHour(sc, bh);
+    if (sc.biomathComputed == null) sc.biomathComputed = sc.biomathManual;
+    sc.biomath = sc.biomathComputed;
+  } else {
+    sc.biomath = sc.biomathManual;
+  }
+}
+
+function setToggleButton(btn, on) {
+  btn.classList.toggle('on', on);
+  btn.classList.toggle('off', !on);
+  btn.textContent = on ? 'ON' : 'OFF';
+  btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+}
+
+function renderSleepPlotForScenario(sc) {
+  if (!sc || !sc.biomathTable) {
+    Plotly.react(sleepPlotDiv, [], {
+      margin: {l: 55, r: 25, t: 10, b: 55},
+      xaxis: { title: 'Hour' },
+      yaxis: { title: 'Biomath value' }
+    }, {responsive: true, displayModeBar: true});
+    return;
+  }
+
+  // Downsample for responsiveness
+  const tMin = sc.biomathTable.tMin;
+  const p = sc.biomathTable.p;
+  const maxPts = 3500;
+  const stride = Math.max(1, Math.ceil(tMin.length / maxPts));
+
+  const x = [];
+  const y = [];
+  for (let i = 0; i < tMin.length; i += stride) {
+    x.push(tMin[i] / 60);
+    y.push(p[i]);
+  }
+
+  const bout = Number.isFinite(sc.boutHour) ? sc.boutHour : x[0];
+  const boutVal = computeBiomathAtHour(sc, bout);
+
+  const traces = [
+    {
+      x, y,
+      mode: 'lines',
+      name: 'Biomath',
+      line: { color: sc.color, dash: 'solid' }
+    },
+    {
+      x: [bout],
+      y: [boutVal],
+      mode: 'markers',
+      name: 'Bout hour',
+      marker: { size: 10, symbol: 'circle', color: '#111' },
+      hovertemplate: 'Hour=%{x:.2f}<br>Biomath=%{y:.3f}<extra></extra>'
+    }
+  ];
+
+  const layout = {
+    margin: {l: 55, r: 25, t: 10, b: 55},
+    xaxis: { title: 'Hour', range: [sc.biomathRange?.min ?? sc.biomathTable.tMin[0]/60, sc.biomathRange?.max ?? sc.biomathTable.tMin[sc.biomathTable.tMin.length-1]/60] },
+    yaxis: { title: 'Biomath value' },
+    legend: { orientation: 'h', x: 0, y: 1.12 },
+    hovermode: 'x unified'
+  };
+
+  Plotly.react(sleepPlotDiv, traces, layout, {responsive: true, displayModeBar: true});
+}
+
+// ---------------- End sleep schedule biomath helpers ----------------
+
+
+function logisticCDF(z, s) {
+  // CDF for Logistic(0, s): 1 / (1 + exp(-z/s))
+  if (s === 0) return (z < 0 ? 0 : (z > 0 ? 1 : 0.5));
+  const x = -z / s;
+  if (x > 50) return 0;
+  if (x < -50) return 1;
+  return 1 / (1 + Math.exp(x));
+}
+
+function microlapseProbSeries(sc, settings) {
+  // Probability of a microlapse: P(U < UT) under logistic noise with scale egs,
+  // where U = mu + noise and mu = iu * FP (no fp-percent/fp-dec dynamics).
+  const totalSeconds = settings.maxMinutes * 60;
+  const dt = 1.0;
+  const biomath = sc.biomath;
+
+  const x = [];
+  const pMic = [];
+
+  for (let t = 0.0; t <= totalSeconds; t += dt) {
+    const minutes = t / 60.0;
+    const p = sc.params;
+
+    const utmcEff = sc.fatigueOn ? p.utmc : 0.0;
+    const utbmcEff = sc.fatigueOn ? p.utbmc : 0.0;
+    const fpmcEff  = sc.fatigueOn ? p.fpmc : 0.0;
+    const fpbmcEff = sc.fatigueOn ? p.fpbmc : 0.0;
+
+    const utVal = p.ut * (1 - biomath * utbmcEff) * Math.pow(1 + minutes, utmcEff);
+    const fpVal = (1 - biomath * fpbmcEff) * Math.pow(1 + minutes, fpmcEff);
+
+    const mu = p.iu * fpVal;
+    const s = Math.max(0, p.egs);
+
+    const z = utVal - mu;
+    let prob;
+    if (s === 0) prob = (mu < utVal) ? 1 : (mu > utVal ? 0 : 0.5);
+    else prob = logisticCDF(z, s);
+
+    x.push(minutes);
+    pMic.push(prob);
+  }
+
+  const maxPts = 3500;
+  const stride = Math.max(1, Math.ceil(x.length / maxPts));
+  const x2 = [];
+  const p2 = [];
+  for (let i = 0; i < x.length; i += stride) {
+    x2.push(x[i]);
+    p2.push(pMic[i]);
+  }
+  return { x: x2, p: p2 };
+}
+
+// -------- RNG helpers (deterministic) --------
+function mulberry32(seed) {
+  let t = seed >>> 0;
+  return function() {
+    t += 0x6D2B79F5;
+    let x = Math.imul(t ^ (t >>> 15), 1 | t);
+    x ^= x + Math.imul(x ^ (x >>> 7), 61 | x);
+    return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function actrNoise(scale, u01) {
+  const eps = 1e-12;
+  const u = Math.min(1 - eps, Math.max(eps, u01));
+  return scale * Math.log((1 - u) / u); // logistic
+}
+
+// -------- Scenario state --------
+let scenarioCounter = 1;
+
+function newScenarioFrom(base) {
+  scenarioCounter += 1;
+  const id = `s${scenarioCounter}`;
+
+  const sc = {
+    id,
+    name: `Scenario ${scenarioCounter}`,
+
+    // Biomath settings
+    biomathManual: (base?.biomathManual ?? base?.biomath ?? 3.84),
+    biomathComputed: (base?.biomathComputed ?? null),
+    useSleepSchedule: (base?.useSleepSchedule ?? false),
+    boutHour: (base?.boutHour ?? 8.0),
+    sleepScheduleText: (base?.sleepScheduleText ?? ''),
+    sleepSchedulePairs: (base?.sleepSchedulePairs ? base.sleepSchedulePairs.map(p => [p[0], p[1]]) : []),
+    biomathTable: (base?.biomathTable ? { tMin: base.biomathTable.tMin.slice(), p: base.biomathTable.p.slice() } : null),
+    biomathRange: (base?.biomathRange ? { min: base.biomathRange.min, max: base.biomathRange.max } : null),
+
+    // Current biomath value used by the simulator
+    biomath: (base?.biomath ?? 3.84),
+
+    fatigueOn: (base?.fatigueOn ?? true),
+    color: pickNextColor(),
+    params: {},
+    unlocked: {}
+  };
+
+  PARAM_META.forEach(m => {
+    sc.params[m.key] = (base?.params?.[m.key] ?? SUGGESTED[m.key]);
+    sc.unlocked[m.key] = (base?.unlocked?.[m.key] ?? false);
+  });
+
+  // Ensure biomath is consistent with the chosen mode
+  syncScenarioBiomath(sc);
+
+  return sc;
+}
+
+// initial scenario
+let scenarios = [{
+  id: 's1',
+  name: 'Scenario 1',
+
+  // Biomath settings
+  biomathManual: 3.84,
+  biomathComputed: null,
+  useSleepSchedule: false,
+  boutHour: 8.0,
+  sleepScheduleText: '',
+  sleepSchedulePairs: [],
+  biomathTable: null,
+  biomathRange: null,
+
+  // Current biomath used by the simulator
+  biomath: 3.84,
+
+  fatigueOn: true,
+  color: pickNextColor(),
+  params: Object.assign({}, SUGGESTED),
+  unlocked: Object.fromEntries(PARAM_META.map(m => [m.key, true]))
+}];
+
+let selectedScenarioId = 's1';
+
+// -------- DOM refs --------
+const scenarioSelect = document.getElementById('scenarioSelect');
+const scenarioName = document.getElementById('scenarioName');
+const scenarioBiomath = document.getElementById('scenarioBiomath');
+const scenarioFatigueToggle = document.getElementById('scenarioFatigueToggle');
+const scenarioScheduleToggle = document.getElementById('scenarioScheduleToggle');
+const editScheduleBtn = document.getElementById('editSchedule');
+const scenarioBoutHour = document.getElementById('scenarioBoutHour');
+const biomathRow = document.getElementById('biomathRow');
+const boutHourRow = document.getElementById('boutHourRow');
+
+// Modal elements
+const sleepModalOverlay = document.getElementById('sleepModalOverlay');
+const sleepModalClose = document.getElementById('sleepModalClose');
+const sleepScheduleText = document.getElementById('sleepScheduleText');
+const sleepApply = document.getElementById('sleepApply');
+const sleepClear = document.getElementById('sleepClear');
+const sleepError = document.getElementById('sleepError');
+const sleepPlotDiv = document.getElementById('sleepPlot');
+const paramControls = document.getElementById('paramControls');
+const plotDiv = document.getElementById('plot');
+const plotMicrolapseDiv = document.getElementById('plotMicrolapse');
+
+function getSelectedScenario() {
+  return scenarios.find(s => s.id === selectedScenarioId) || scenarios[0];
+}
+
+function refreshScenarioSelect() {
+  scenarioSelect.innerHTML = '';
+  scenarios.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.id;
+    opt.textContent = s.name;
+    scenarioSelect.appendChild(opt);
+  });
+  scenarioSelect.value = selectedScenarioId;
+}
+
+function setEditorFromScenario(sc) {
+  scenarioName.value = sc.name;
+
+  // Ensure biomath reflects current mode
+  syncScenarioBiomath(sc);
+
+  // Biomath input: manual unless schedule mode is enabled
+  const usingSchedule = !!sc.useSleepSchedule && !!sc.biomathTable;
+  scenarioBiomath.value = usingSchedule ? sc.biomath.toFixed(3) : sc.biomathManual;
+  scenarioBiomath.disabled = usingSchedule;
+  biomathRow.style.opacity = usingSchedule ? '0.55' : '1.0';
+
+  // Sleep schedule toggle + bout hour input
+  setToggleButton(scenarioScheduleToggle, usingSchedule);
+
+  scenarioBoutHour.value = Number.isFinite(sc.boutHour) ? sc.boutHour : 8.0;
+  scenarioBoutHour.disabled = !usingSchedule;
+  boutHourRow.style.opacity = usingSchedule ? '1.0' : '0.45';
+
+  // If we know schedule range, constrain bout hour input
+  if (sc.biomathRange) {
+    scenarioBoutHour.min = sc.biomathRange.min;
+    scenarioBoutHour.max = sc.biomathRange.max;
+  } else {
+    scenarioBoutHour.min = 0;
+    scenarioBoutHour.max = 500;
+  }
+
+  // Scenario-specific fatigue toggle button state
+  const on = !!sc.fatigueOn;
+  scenarioFatigueToggle.classList.toggle('on', on);
+  scenarioFatigueToggle.classList.toggle('off', !on);
+  scenarioFatigueToggle.textContent = on ? 'ON' : 'OFF';
+  scenarioFatigueToggle.setAttribute('aria-pressed', on ? 'true' : 'false');
+
+  renderParamEditor(sc);
+}
+
+function renderParamEditor(sc) {
+  paramControls.innerHTML = '';
+  const fatigueKeys = new Set(['utmc','utbmc','fpmc','fpbmc']);
+  const fatigueOn = !!sc.fatigueOn;
+
+  PARAM_META.forEach(meta => {
+    const row = document.createElement('div');
+    row.className = 'row';
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = !!sc.unlocked[meta.key];
+
+    const sliderWrap = document.createElement('div');
+
+    const label = document.createElement('label');
+    label.textContent = meta.label;
+
+    const slider = document.createElement('input');
+    slider.type = 'range';
+    slider.min = meta.min;
+    slider.max = meta.max;
+    slider.step = meta.step;
+    slider.value = sc.params[meta.key];
+    slider.disabled = !cb.checked;
+
+    // Grey out fatigue parameters when fatigue module is OFF for this scenario
+    const isFatigueParam = fatigueKeys.has(meta.key);
+    if (!fatigueOn && isFatigueParam) {
+      row.style.opacity = '0.45';
+      row.title = 'Disabled when Fatigue Module is OFF (scenario-specific).';
+      cb.disabled = true;
+      slider.disabled = true;
+    }
+
+    const val = document.createElement('div');
+    val.className = 'value';
+
+    function syncVal() {
+      const digits = (meta.step < 0.01) ? 3 : 2;
+      val.textContent = Number(slider.value).toFixed(digits);
+    }
+    syncVal();
+
+    cb.addEventListener('change', () => {
+      sc.unlocked[meta.key] = cb.checked;
+      slider.disabled = !cb.checked;
+      if (!cb.checked) {
+        sc.params[meta.key] = SUGGESTED[meta.key];
+        slider.value = sc.params[meta.key];
+        syncVal();
+      }
+      update();
+    });
+
+    slider.addEventListener('input', () => {
+      sc.params[meta.key] = Number(slider.value);
+      syncVal();
+      update();
+    });
+
+    sliderWrap.appendChild(label);
+    sliderWrap.appendChild(slider);
+
+    row.appendChild(cb);
+    row.appendChild(sliderWrap);
+    row.appendChild(val);
+
+    paramControls.appendChild(row);
+  });
+}
+
+// -------- Simulation --------
+function simulateOneScenario(sc, settings) {
+  const totalSeconds = settings.maxMinutes * 60;
+  const dt = 1.0; // fixed 1 second step
+  const biomath = sc.biomath;
+
+  const rng = mulberry32(settings.seed);
+
+  const x = [];
+  const ut = [];
+  const u = [];
+
+  for (let t = 0.0; t <= totalSeconds; t += dt) {
+    const minutes = t / 60.0;
+    const p = sc.params;
+
+    // Fatigue Module Switch:
+    // When OFF, the fatigue parameters (utmc, utbmc, fpmc, fpbmc) contribute 0 effect.
+    const utmcEff = sc.fatigueOn ? p.utmc : 0.0;
+    const utbmcEff = sc.fatigueOn ? p.utbmc : 0.0;
+    const fpmcEff  = sc.fatigueOn ? p.fpmc : 0.0;
+    const fpbmcEff = sc.fatigueOn ? p.fpbmc : 0.0;
+
+    const utVal = p.ut * (1 - biomath * utbmcEff) * Math.pow(1 + minutes, utmcEff);
+    const fpVal = (1 - biomath * fpbmcEff) * Math.pow(1 + minutes, fpmcEff);
+
+    const noise = (p.egs === 0) ? 0.0 : actrNoise(p.egs, rng());
+    const uVal = p.iu * fpVal + noise;
+
+    x.push(minutes);
+    ut.push(utVal);
+    u.push(uVal);
+  }
+
+  // downsample for responsiveness
+  const maxPts = 3500;
+  const stride = Math.max(1, Math.ceil(x.length / maxPts));
+  const x2 = [];
+  const ut2 = [];
+  const u2 = [];
+  for (let i = 0; i < x.length; i += stride) {
+    x2.push(x[i]);
+    ut2.push(ut[i]);
+    u2.push(u[i]);
+  }
+  return { x: x2, ut: ut2, u: u2 };
+}
+
+function readGlobalSettings() {
+  const maxMinutes = Math.max(1, Number(document.getElementById('maxMinutes').value || 60));
+  const seed = Number(document.getElementById('seed').value || 1);
+  return { maxMinutes, seed };
+}
+
+// -------- Plot --------
+function render(traces) {
+  const layout = {
+    margin: {l: 55, r: 25, t: 10, b: 55},
+    xaxis: { title: 'Time on Task (minutes)' },
+    yaxis: { title: 'Utility' },
+    legend: { orientation: 'h', x: 0, y: 1.12 },
+    hovermode: 'x unified'
+  };
+  Plotly.react(plotDiv, traces, layout, {responsive: true, displayModeBar: true});
+}
+
+
+function renderMicrolapse(traces) {
+  const layout = {
+    margin: {l: 55, r: 25, t: 10, b: 55},
+    xaxis: { title: 'Time on Task (minutes)' },
+    yaxis: { title: 'Probability of Microlapse', range: [0, 1] },
+    legend: { orientation: 'h', x: 0, y: 1.12 },
+    hovermode: 'x unified'
+  };
+  Plotly.react(plotMicrolapseDiv, traces, layout, {responsive: true, displayModeBar: true});
+}
+
+function update() {
+  const settings = readGlobalSettings();
+
+  // Preserve legend toggles across updates for BOTH plots.
+  const prevVisibleByUid1 = {};
+  if (plotDiv && plotDiv.data) {
+    plotDiv.data.forEach(tr => { if (tr && tr.uid) prevVisibleByUid1[tr.uid] = tr.visible; });
+  }
+
+  const prevVisibleByUid2 = {};
+  if (plotMicrolapseDiv && plotMicrolapseDiv.data) {
+    plotMicrolapseDiv.data.forEach(tr => { if (tr && tr.uid) prevVisibleByUid2[tr.uid] = tr.visible; });
+  }
+
+  const tracesUtility = [];
+  const tracesMicrolapse = [];
+
+  scenarios.forEach(sc => {
+    const c = sc.color;
+
+    // --- Utility plot ---
+    const out = simulateOneScenario(sc, settings);
+
+    const uidU = `${sc.id}-U`;
+    const uidUT = `${sc.id}-UT`;
+
+    const visU = prevVisibleByUid1[uidU];
+    const visUT = prevVisibleByUid1[uidUT];
+
+    tracesUtility.push({
+      uid: uidU,
+      x: out.x,
+      y: out.u,
+      name: `${sc.name} — U`,
+      mode: 'lines',
+      line: { color: hexToRGBA(c, 0.6), dash: 'solid' },
+      visible: (visU === 'legendonly') ? 'legendonly' : true
+    });
+
+    tracesUtility.push({
+      uid: uidUT,
+      x: out.x,
+      y: out.ut,
+      name: `${sc.name} — UT`,
+      mode: 'lines',
+      line: { color: c, dash: 'dash' },
+      visible: (visUT === 'legendonly') ? 'legendonly' : true
+    });
+
+    // --- Microlapse probability plot ---
+    const pm = microlapseProbSeries(sc, settings);
+    const uidP = `${sc.id}-P`;
+    const visP = prevVisibleByUid2[uidP];
+
+    tracesMicrolapse.push({
+      uid: uidP,
+      x: pm.x,
+      y: pm.p,
+      name: `${sc.name}`,
+      mode: 'lines',
+      line: { color: c, dash: 'solid' },
+      visible: (visP === 'legendonly') ? 'legendonly' : true
+    });
+  });
+
+  render(tracesUtility);
+  renderMicrolapse(tracesMicrolapse);
+}
+
+// -------- Event wiring --------
+scenarioSelect.addEventListener('change', () => {
+  selectedScenarioId = scenarioSelect.value;
+  setEditorFromScenario(getSelectedScenario());
+});
+
+scenarioName.addEventListener('input', () => {
+  const sc = getSelectedScenario();
+  sc.name = scenarioName.value || 'Scenario';
+  refreshScenarioSelect();
+  update();
+});
+
+scenarioBiomath.addEventListener('input', () => {
+  const sc = getSelectedScenario();
+  // Only editable in manual mode
+  if (sc.useSleepSchedule && sc.biomathTable) return;
+
+  sc.biomathManual = Number(scenarioBiomath.value || 0);
+  sc.biomath = sc.biomathManual;
+  update();
+});
+scenarioFatigueToggle.addEventListener('click', () => {
+  const sc = getSelectedScenario();
+  sc.fatigueOn = !sc.fatigueOn;
+
+  // Update button UI + grey-out behavior immediately
+  setEditorFromScenario(sc);
+  update();
+});
+
+// Sleep schedule controls (scenario-specific)
+editScheduleBtn.addEventListener('click', () => {
+  const sc = getSelectedScenario();
+  openSleepModal(sc);
+});
+
+scenarioScheduleToggle.addEventListener('click', () => {
+  const sc = getSelectedScenario();
+
+  // If turning on with no schedule yet, open modal and keep OFF until valid schedule applied.
+  if (!sc.useSleepSchedule) {
+    if (!sc.sleepSchedulePairs || sc.sleepSchedulePairs.length === 0 || !sc.biomathTable) {
+      openSleepModal(sc, "No schedule set yet — add one to enable schedule mode.");
+      return;
+    }
+    sc.useSleepSchedule = true;
+  } else {
+    sc.useSleepSchedule = false;
+  }
+
+  syncScenarioBiomath(sc);
+  setEditorFromScenario(sc);
+  update();
+});
+
+scenarioBoutHour.addEventListener('input', () => {
+  const sc = getSelectedScenario();
+  sc.boutHour = Number(scenarioBoutHour.value || 0);
+
+  if (sc.useSleepSchedule && sc.biomathTable) {
+    syncScenarioBiomath(sc);
+    scenarioBiomath.value = sc.biomath.toFixed(3);
+    // Update modal plot marker if open
+    if (sleepModalOverlay.style.display !== 'none') renderSleepPlotForScenario(sc);
+    update();
+  }
+});
+
+// Modal open/close/apply/clear
+function openSleepModal(sc, message=null) {
+  sleepError.textContent = message || '';
+  sleepScheduleText.value = sc.sleepScheduleText || '';
+
+  // Show
+  sleepModalOverlay.style.display = 'flex';
+
+  // Render current plot if available
+  if (sc.biomathTable) renderSleepPlotForScenario(sc);
+  else Plotly.react(sleepPlotDiv, [], {margin:{l:55,r:25,t:10,b:55}, xaxis:{title:'Hour'}, yaxis:{title:'Biomath value'}}, {responsive:true, displayModeBar:true});
+}
+
+function closeSleepModal() {
+  sleepModalOverlay.style.display = 'none';
+}
+
+sleepModalClose.addEventListener('click', closeSleepModal);
+
+// Click outside modal to close
+sleepModalOverlay.addEventListener('click', (e) => {
+  if (e.target === sleepModalOverlay) closeSleepModal();
+});
+
+sleepApply.addEventListener('click', () => {
+  const sc = getSelectedScenario();
+  try {
+    const pairs = parseSleepSchedule(sleepScheduleText.value);
+    if (!pairs || pairs.length === 0) throw new Error("Schedule is empty.");
+
+    const series = computeBiomathSeriesFromSchedule(pairs);
+    if (!series) throw new Error("Could not compute biomath series from schedule.");
+
+    sc.sleepScheduleText = sleepScheduleText.value.trim();
+    sc.sleepSchedulePairs = pairs;
+    sc.biomathTable = { tMin: series.tMin, p: series.p };
+    sc.biomathRange = { min: series.minHr, max: series.maxHr };
+
+    // If current bout hour is outside range, snap to start of schedule
+    if (!Number.isFinite(sc.boutHour) || sc.boutHour < sc.biomathRange.min || sc.boutHour > sc.biomathRange.max) {
+      sc.boutHour = sc.biomathRange.min;
+    }
+
+    // Enable schedule mode
+    sc.useSleepSchedule = true;
+
+    syncScenarioBiomath(sc);
+    setEditorFromScenario(sc);
+    renderSleepPlotForScenario(sc);
+    update();
+
+    sleepError.textContent = '';
+  } catch (err) {
+    sleepError.textContent = err?.message ? String(err.message) : String(err);
+  }
+});
+
+sleepClear.addEventListener('click', () => {
+  const sc = getSelectedScenario();
+  sc.sleepScheduleText = '';
+  sc.sleepSchedulePairs = [];
+  sc.biomathTable = null;
+  sc.biomathRange = null;
+  sc.useSleepSchedule = false;
+
+  syncScenarioBiomath(sc);
+  setEditorFromScenario(sc);
+  update();
+
+  sleepError.textContent = 'Schedule cleared for this scenario.';
+  Plotly.react(sleepPlotDiv, [], {margin:{l:55,r:25,t:10,b:55}, xaxis:{title:'Hour'}, yaxis:{title:'Biomath value'}}, {responsive:true, displayModeBar:true});
+});
+
+document.getElementById('maxMinutes').addEventListener('input', update);
+document.getElementById('seed').addEventListener('input', update);
+document.getElementById('resample').addEventListener('click', () => {
+  const seedEl = document.getElementById('seed');
+  seedEl.value = String(Number(seedEl.value || 1) + 1);
+  update();
+});
+
+/*
+document.getElementById('unlockAll').addEventListener('click', () => {
+  const sc = getSelectedScenario();
+  PARAM_META.forEach(m => { sc.unlocked[m.key] = true; });
+  renderParamEditor(sc);
+  update();
+});
+
+document.getElementById('lockAll').addEventListener('click', () => {
+  const sc = getSelectedScenario();
+  PARAM_META.forEach(m => {
+    sc.unlocked[m.key] = false;
+    sc.params[m.key] = SUGGESTED[m.key];
+  });
+  renderParamEditor(sc);
+  update();
+});
+*/
+
+document.getElementById('resetScenario').addEventListener('click', () => {
+  const sc = getSelectedScenario();
+
+  // Reset biomath to manual default
+  sc.biomathManual = 3.84;
+  sc.biomathComputed = null;
+  sc.useSleepSchedule = false;
+  sc.boutHour = 8.0;
+  sc.sleepScheduleText = '';
+  sc.sleepSchedulePairs = [];
+  sc.biomathTable = null;
+  sc.biomathRange = null;
+  sc.biomath = sc.biomathManual;
+
+  sc.fatigueOn = true;
+  PARAM_META.forEach(m => {
+    sc.unlocked[m.key] = false;
+    sc.params[m.key] = SUGGESTED[m.key];
+  });
+
+  setEditorFromScenario(sc);
+  refreshScenarioSelect();
+  update();
+});
+
+document.getElementById('addScenario').addEventListener('click', () => {
+  const base = getSelectedScenario();
+  const sc = newScenarioFrom(base);
+  scenarios.push(sc);
+  selectedScenarioId = sc.id;
+  refreshScenarioSelect();
+  setEditorFromScenario(sc);
+  update();
+});
+
+document.getElementById('removeScenario').addEventListener('click', () => {
+  if (scenarios.length <= 1) return;
+
+  const idx = scenarios.findIndex(s => s.id === selectedScenarioId);
+  scenarios.splice(idx, 1);
+
+  selectedScenarioId = scenarios[Math.max(0, idx - 1)].id;
+  refreshScenarioSelect();
+  setEditorFromScenario(getSelectedScenario());
+  update();
+});
+
+// initial render
+refreshScenarioSelect();
+setEditorFromScenario(getSelectedScenario());
+update();
+</script>
+</body>
+</html>

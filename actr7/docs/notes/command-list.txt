@@ -1,0 +1,314 @@
+
+s - safe because of sufficient locking
+si - safe because it's a single instance command
+ss - safe because it's a signal and doesn't have an underlying function
+sc - safe conditionally - assuming associated user functions are safe and/or user doesn't modify things like events which are not intended to be modified
+sf - safe assuming the file access isn't a problem and that all user commands in the file are safe
+
+* indicates a local function hasn't been added to tutorial's python client yet
++ probably doesn't need a local function in python client 
+
+s - act-r-output
+s - create-button-for-exp-window
+s - print-warning
+s - create-line-for-exp-window
+s - one-time-model-warning
+s - create-text-for-exp-window
+s - model-warning
+s - command-output
+s - model-output
+s - get-time
+sc - mp-show-queue
+sc - install-device
+sc - remove-device
+sc - signal-device
+s - select-exp-window *
+s - define-device
+s - undefine-device
+s - define-interface
+s - undefine-interface
+sc - signal-exp-window
+sc - close-exp-window
+sc - close-all-exp-windows
+s - extend-possible-slots
+s - pprint-chunks
+s - chunk-p
+s - define-chunks
+s - copy-chunk
+s - chunk-slot-value
+s - set-chunk-slot-value
+s - mod-chunk
+s - init-exp-window
+s - add-line-to-exp-window
+s - add-text-to-exp-window
+s - add-button-to-exp-window
+s - add-visicon-features
+s - add-items-to-exp-window
+s - delete-visicon-features
+s - delete-all-visicon-features
+s - remove-items-from-exp-window
+s - clear-exp-window
+s - remove-exp-window
+s - modify-visicon-features
+s - modify-line-for-exp-window
+s - print-visicon
+s - permute-list
+s - act-r-random
+s - open-exp-window
+sf - load-act-r-model
+s - run
+s - run-full-time
+s - run-until-condition
+s - run-until-time
+s - run-n-events
+s - schedule-event
+s - schedule-event-relative
+s - schedule-event-now
+s - buffer-read
+s - clear-buffer
+s - correlation
+s - mean-deviation
+s - default-button-action
+s - get-parameter-value
+s - set-buffer-chunk
+s - goal-focus
+s - mod-focus
+sf - reload
+sc - reset
+s - new-sound
+s - new-digit-sound
+s - new-tone-sound
+s - new-word-sound
+s - buffer-chunk
+s - buffer-status
+s - add-dm
+s - add-dm-fct
+s - print-dm-finsts
+s - whynot-dm
+s - set-imaginal-free
+s - set-imaginal-error
+
+s - record-visicon-updates
+s - record-audicon-updates
+s - visual-device-installed
+s - visual-device-removed
+s - keyboard-interface-fn
+s - initialize-keyboard
+s - start-hand-at-mouse
+s - remove-mouse
+s - initialize-mouse
+s - mouse-interface-fn
+s - penable
+s - pdisable
+s - whynot
+s - spp
+
+
+s - mp-models
+s - all-productions
+s - buffers
+s - printed-visicon
+s - print-audicon
+s - printed-audicon
+s - printed-parameter-details
+s - sorted-module-names
+s - modules-parameters
+s - modules-with-parameters
+
+s - record-history
+s - stop-recording-history
+s - get-history-data
+s - history-data-available
+s - process-history-data
+s - save-history-data
+
+s - visible-virtual-window-mouse-click +
+s - add-virtual-window-handler +
+s - remove-virtual-window-handler +
+
+ss - reset-start
+ss - reset-step1
+ss - reset-step2
+ss - reset-step3
+ss - creating-model
+ss - deleting-model
+ss - run-start
+ss - run-stop
+ss - output-speech
+ss - output-key
+ss - update-attended-loc
+ss - visicon-update
+ss - warning-trace
+ss - model-trace
+ss - command-trace
+ss - general-trace
+ss - clear-all-start
+ss - click-mouse
+ss - move-mouse
+
+s - used-production-buffers
+
+s - dm 
+s - sdm 
+
+s - set-parameter-value
+s - sdp
+
+s - simulate-retrieval-request
+s - saved-activation-history
+s - print-activation-trace
+s - print-chunk-activation-trace
+
+s - pp
+s - trigger-reward
+
+
+s - define-chunk-spec
+s - chunk-spec-to-chunk-def
+s - release-chunk-spec-id
+
+s - undefine-module
+
+s - define-module
+
+s - chunk-copied-from
+
+s - mp-time
+s - mp-time-ms
+
+s - load-act-r-code
+
+si - testing-model-compare (only available when the model-tester is loaded) +
+
+s - get-system-parameter-value
+s - set-system-parameter-value
+
+s - print-bold-response-data
+
+s - pbreak
+s - punbreak
+
+s - mp-queue-count
+s - mp-show-waiting
+
+s - evt-time  * 
+s - evt-mstime  *
+s - evt-priority  *
+
+sc - evt-action  *
+sc - evt-model  *
+sc - evt-module  *
+sc - evt-destination  *
+sc - evt-params  *
+sc - evt-details  *
+sc - evt-output  *
+
+s - event-displayed-p *
+s - format-event *
+
+s - schedule-event-after-module
+s - schedule-event-after-change *
+s - schedule-periodic-event *
+s - schedule-break *
+s - schedule-break-relative 
+s - schedule-break-after-module *
+s - schedule-break-after-all *
+s - add-pre-event-hook *
+s - add-post-event-hook *
+s - delete-event-hook *
+s - delete-event *
+
+s - new-name *
+s - release-name *
+s - new-symbol *
+
+s - act-r-noise *
+s - randomize-time *
+s - randomize-time-ms *
+
+s - define-history *
+s - start-incremental-history-data *
+s - get-incremental-history-data *
+s - define-history-constituent *
+s - define-history-processor *
+
+s - defined-devices *
+s - defined-interfaces *
+
+s - get-new-command-name *
+
+s - add-buffer-trace-notes *
+
+s - register-subsymbolic-parameters *
+
+s - un-delay-conflict-resolution *
+s - clear-productions *
+
+s - show-compilation-buffer-types *
+s - compilation-buffer-type *
+s - specify-compilation-buffer-type *
+
+s - similarity *
+s - set-similarities *
+s - set-similarities-fct *
+s - sji *
+s - add-sji *
+s - add-sji-fct *
+
+s - get-base-level *
+s - get-base-level-fct *
+s - set-base-levels *
+s - set-base-levels-fct *
+s - set-all-base-levels *
+s - clear-dm *
+s - reset-declarative-finsts * 
+s - merge-dm *
+s - merge-dm-fct *
+s - simulate-retrieval-request-fct *
+s - simulate-retrieval-request-plus-seed-fct *
+
+s - current-devices *
+
+s - modify-text-for-exp-window *
+s - modify-button-for-exp-window *
+
+s - remove-visual-finsts *
+s - set-visloc-default *
+s - add-word-characters *
+s - set-visual-center-point *
+
+s - new-other-sound *
+s - set-audloc-default *
+
+s - start-hand-at-keypad *
+s - start-hand-at-key *
+s - set-cursor-position, set-cursor-position-fct *
+s - set-hand-location, set-hand-location-fct *
+s - register-articulation-time, get-articulation-time *
+
+s - define-chunk-spec-fct *
+s - chunk-name-to-chunk-spec *
+s - match-chunk-spec-p *
+s - find-matching-chunks *
+s - chunk-spec-slots *
+s - slot-in-chunk-spec-p *
+s - chunk-spec-slot-spec *
+s - slot-spec-modifier, slot-spec-slot, slot-spec-value *
+s - chunk-spec-variable-p *
+s - verify-single-explicit-value *
+s - test-for-clear-request *
+s - chunk-difference-to-chunk-spec *
+s - printed-chunk-spec *
+s - pprint-chunk-plus *
+
+s - module-request *
+s - schedule-module-request *
+s - buffer-spread *
+s - buffers-module-name *
+
+s - get-module *
+
+s - chunk-filled-slots-list *
+s - chunks *
+
+s - add-dm-chunks, add-dm-chunks-fct, merge-dm-chunks, merge-dm-chunks-fct *

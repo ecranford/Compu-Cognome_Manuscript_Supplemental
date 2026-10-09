@@ -1,0 +1,25 @@
+Some notes on issues with running things in various Lisps:
+
+ABCL:
+
+Can't use the full version because it seems like the socket
+stream can't be written and read at the same time.  It starts
+up OK, but then just hangs on the format when trying to 
+respond to a request.
+
+Also doesn't consider ~ a valid directory (at least on Windows).
+
+CLisp:
+
+Full version won't work on Windows becasue there's no thread
+support, but not sure about others.
+
+Lisp only also won't work because it doesn't consider fixnum
+a class name for the format-event method in events.lisp.
+
+ECL:
+
+Full version doesn't work because the QuickLisp libraries
+don't have all the necessary extensions for it.
+
+Lisp only does work.

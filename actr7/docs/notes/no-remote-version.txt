@@ -1,0 +1,59 @@
+The commands listed below are documented in the reference manual
+but currently don't have a remote version.  There are a bunch of
+reasons why that might be: they deal with internal structures,
+they use keyword params and too much code uses them to adjust
+that (often a similar replacement is available), not possible
+for macros that evaluate a body of code (like no-output), it's
+obscure or rarely used and just hasn't been added, depends on
+an underlying mechanism which itself hasn't been updated, etc.
+
+Many of them could be added, and likely will over time, but
+others may end up being dropped from the 'supported' interface
+or remaining 'internal only'.
+
+
+mp-modules-events
+all-module-names
+define-model
+delete-model
+chunk-type
+pprint-chunk-type
+chunk-type-p
+all-chunk-type-names
+chunk-type-possible-slot-names-fct
+pprint-chunks-plus
+chunk-documentation
+chunks
+equal-chunks
+eq-chunks
+merge-chunks
+create-chunk-alias
+true-chunk-name
+normalize-chunk-names
+sgp
+get-parameter-default-value
+with-parameters
+ssp
+meta-p-output
+no-output
+run-step
+
+
+An alternative remote command is provided instead of a direct call to existing:
+
+
+
+
+
+
+Remote versions differ from Lisp version for these commands:
+
+model-output (fixed string only not a format string)
+command-output (same)
+print-warning (same)
+model-warning (same)
+one-time-model-warning (same)
+
+
+Hook parameters which don't accept remote names:
+

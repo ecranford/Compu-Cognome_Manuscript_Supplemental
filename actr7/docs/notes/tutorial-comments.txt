@@ -1,0 +1,6 @@
+  I’ll give you some insight into the problems that my students had.
+
+  Unit 1: Students got bogged tripped up by the names of the count-order facts and the fields ‘first’ and ‘second’ in the chunks.  They got bogged down in the verbose traces. The tutor mode was not very effective; they didn’t really understand what they were doing, just copying and pasting.  Students didn’t know how to create additional goals at run-time to explore the models further.
+
+  Unit 2: The addition of the Python interface led to no end of headaches.  The grad students didn’t have Python on their systems, struggled to get everything working and connected.  Moving this to a later unit would help.
+

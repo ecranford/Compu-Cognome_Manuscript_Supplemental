@@ -1,0 +1,125 @@
+This document is for recording some potential problems that I've 
+encountered but which are unlikely to cause any real users trouble
+and therefore aren't worth the effort to try and fix at this point.
+They're probably not very useful for anyone else, but I'm putting
+them into the repository so I have a record of them all in one
+place.
+
+- In Lisps with an IDE that supports multiple "listener" windows
+(ACL, LW, CCL) there can be problems with model output if the
+listener that was active when a model was loaded is closed and
+a different one is used for interaction with that model.  The 
+easy fix is to just reload the model if a new listener is needed
+for some reason.  The printing module could have some extra safety
+code added to test for things like that, but it would be pretty 
+ugly and slow things down in general to catch a situation that
+likely never comes up in practice.
+
+- The procedural module's caching of production statements for
+parsing purposes can be problematic if a chunk-type is changed
+without the model being redefined.  The way that can happen is
+if a model definintion contains calls to Lisp code which contains
+chunk-type definitions, and the chunk-type definitions in that
+code are changed without reloading/redefining the model itself
+(the function is redefined either interactively or by loading a
+a file other than the one containing the model definition).  If
+that happens, resetting the model could lead to badly parsed 
+productions if those chunk-type changes affect the indexing of the
+slot names.  The fix if that happens is to reload/redefine the 
+model -- a clear-all or delete-model needs to happen to eliminate
+the cached production parses so that things get reparsed with the
+correct slot name indexing.
+
+- A :search-copy multi-buffer no longer generates "garbage" chunks,
+but there is still a potential issue that wasn't detected previously.
+The binding for the buffer name variable will not match the name of
+the chunk actually in the buffer when the production fires.  Previously
+it was an arbitrary copy of the original chunk.  Now, it is consistent
+with what a non-copied search buffer would do, which is bind to the
+name of the chunk from the buffer set to which it is matched.  The
+catch is that since the buffer copies the chunk that name won't match
+and that name isn't known until after the production is selected --
+it can't know it in advance because production matching occurs one
+production at a time which means there's a new search for each one 
+and thus it can't actually put the chunk in the buffer to get the
+"right" copied name until it knows which production will be selected.
+
+- The :rm-clean set of letter features (it's not the default set) for
+use with :optimize-visual set to nil have a discrepancy between the 
+value that's set in the chunk's slot and the real-visual-value 
+parameter setting.  That means that the model can't find a feature
+based on the "clean" value (the one in the slot).  Here's a quick
+example:
+
+CG-USER(7): (define-model test
+                (set-cfs-mth (get-module :vision) :rm-clean)
+              (sgp :v t :optimize-visual nil)
+              (install-device (open-exp-window "" :visible nil))
+              (add-text-to-exp-window :text "a")
+              (proc-display)
+              (print-visicon)
+              (pprint-chunks-plus ))
+Loc        Att   Kind           Value             Color           ID
+---------  ---   -------------  ----------------  --------------  -------------
+(  4   6)  NEW   CHAR-PRIMITIVE SYMMETRIC+        BLACK           CHAR-PRIMITIVE0
+(  4   6)  NEW   CHAR-PRIMITIVE VERTICAL-R2       BLACK           CHAR-PRIMITIVE1
+(  4   6)  NEW   CHAR-PRIMITIVE VERTICAL-L2       BLACK           CHAR-PRIMITIVE2
+(  4   6)  NEW   CHAR-PRIMITIVE HORIZONTAL-C2     BLACK           CHAR-PRIMITIVE3
+(  4   6)  NEW   CHAR-PRIMITIVE HORIZONTAL-C1     BLACK           CHAR-PRIMITIVE4
+(  4   6)  NEW   CHAR-PRIMITIVE VERTICAL-R1       BLACK           CHAR-PRIMITIVE5
+(  4   6)  NEW   CHAR-PRIMITIVE VERTICAL-L1       BLACK           CHAR-PRIMITIVE6
+(  4   6)  NEW   CHAR-PRIMITIVE HORIZONTAL-T0     BLACK           CHAR-PRIMITIVE7
+CHAR-PRIMITIVE4-0
+   KIND  CHAR-PRIMITIVE
+   VALUE  HORIZONTAL-C   ;; This
+   COLOR  BLACK
+   HEIGHT  10
+   WIDTH  7
+   SCREEN-X  4
+   SCREEN-Y  6
+   DISTANCE  1080
+   SIZE  0.19999999
+   LEFT  1
+   RIGHT  7
+
+  --chunk parameters--
+   VISUAL-APPROACH-WIDTH-FN  NIL
+   REAL-VISUAL-VALUE  HORIZONTAL-C1  ;; doesn't match this
+   SPECIAL-VISUAL-OBJECT  NIL
+   ...
+
+
+- The phrase chunks have some potential problems with the way they
+encode things for the model to use.  The lists in the objects,
+words, and colors slots aren't really usable by the model, and then
+the chunks specified in that objects list have screen-pos slot values
+which are vectors of a location.  Here's an example from the
+synth-feats test model:
+
+PHRASE!0-0
+   SCREEN-POS  CHAR-PRIMITIVE2-0-0
+   VALUE  "this is a phrase"
+   COLOR  BLACK
+   PHRASE!  T
+   OBJECTS  (TEXT4 TEXT7 TEXT9 TEXT16)
+   WORDS  ("this" "is" "a" "phrase")
+   COLORS  (RED BLACK BLACK BLACK)
+
+
+CG-USER(17): (pprint-chunks text4)
+TEXT4
+   SCREEN-POS  #(14 26 1080)
+   VALUE  "this"
+   COLOR  RED
+   TEXT  T
+
+
+- Move-attention requests with locations that weren't from the visicon are
+not deterministic because it doesn't sort the visicon chunks in advance so
+they'll be in the maphash order which might be deterministic in a given
+Lisp instance.  Sorting for each move-attention request however seems like
+overkill since most poeple probably don't use "other" location chunks for
+attention shifts anyway, and now that those other chunks better test features
+it's probably less likely that there'll be equally matching items to have
+it randomly choose between anyway.  However, it could sort the results at
+the end if determinism is really necessary, but not doing that now.

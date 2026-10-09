@@ -1,0 +1,49 @@
+Requirements:
+Lisp (recommend sbcl; https://www.sbcl.org/platform-table.html)
+Quicklisp (https://www.quicklisp.org/beta/)
+
+1) Save "Pipeline" directory to a location of your choice.
+2) Open a terminal, and navigate to the directory of the PVT.lisp file (the directory this file is located ".../Pipeline/PVT")
+	a) e.g., on Windows, if I open a terminal it will typically start in my user directory, and I downloaded the Pipeline directory to the Desktop.
+		i) C:\Users\ecranford>cd Desktop\Pipeline\PVT
+		ii) Changing directories is different for different OS, and can be done multiple ways on OS's such as Windows. e.g., these do the same thing as in (i)
+			1) C:\Users\ecranford>cd ./Desktop\Pipeline\PVT
+			2) C:\Users\ecranford>cd .\Desktop\Pipeline\PVT
+			3) C:\Users\ecranford>cd /Desktop\Pipeline\PVT
+		iii) The best method for changing directories is to type the first few letters of the directory after a slash and press TAB. This will autocomplete the directory if it exists, and if it does not then either change the direction of the slash or you misspelled something. Continue doing this for each directory in the path until you get to the PVT directory
+3) Start the PVT model, e.g.: "sbcl --load "PVT.lisp"" (this will automatically start single-threaded ACT-R*; note, the first time loading single-threaded ACT-R it may take a bit long to decompile the files)
+4) Run the model
+	a) To run the parameter optimization type and execute (start-server)
+		i) In your call from the parameter optimization script, you can specify the values of certain parameters (see parameter optimization readme for further details)
+	b) To run the model without parameter optimization type and execute (run-model-param-opt)
+		i) By default the model will NOT save data to local file. There are two ways to save data to file. The first method results in slower model runs, but saves more detailed info, while the second method is faster, but less detailed.
+			1) Specify the keyword :local-file-output with a unique name for the run
+				a) (run-model-param-opt :local-file-output "runX") <- This will save a file called "runX_trialresponses.txt" that has trial-level data with parameter settings including current values of "fp", "fp-percent", and "ut".
+			2) Specify the keyword :tcp-file-output with a unique name for the run
+				a) (run-model-param-opt :tcp-file-output "runX") <- This will save a file called "runX_tcpdata.csv" that has trial-level data, that would be sent over tcp if you were running the server. To limit the amount of data sent over tcp, this data does not include current values of parameters. However, this method is faster because it only writes data once at the end of the run, while the former method writes data during every trial.
+		ii) There are multiple parameters that can set by specifying the keyword followed by a value**. Here are the keywords, their default values, and a description.
+			1)  dat		<- 0.05		<- default action time (production firing time)
+			2)  egs		<- 0.25		<- expected gain s parameter (s value for noise added to utility values)
+			3)  ut0		<- 2.2		<- initial utility threshold
+			4)  iu		<- 2.6		<- initial utility value of productions
+			5)  utmc	<- -0.01	<- utility threshold minute constant (time on task exponent for UT)
+			6)  utbmc	<- 0.01		<- utility threshold biomathematical model constant
+			7)  fpdec	<- 0.98		<- decrement to fp-percent during a microlapse
+			8)  fpmc	<- -0.05	<- fatigue procedural minute exponent (time on task exponent for FP)
+			9)  fpbmc	<- 0.02		<- fatigue procedural biomathematical model constant
+			10) numiterations	<- 10	<- number of model iterations (e.g., different subjects or multiple runs)
+			11) modelduration	<- 10	<- number of minutes to run the task for one session
+			12) bouts	<- '(34 82 130 274 322 394 514 634 754 898)	<- a list of hours when a session occurs
+			13) schedule	<- *OPSII-SS*	<- sleep schedule for protocol (defaults to sleep schedule for OPS-II study); a list of lists for awake and sleep times (e.g., '((7 23) (31 47)) is a schedule for someone that wakes at 7am and sleeps at 11pm for two days).
+			14) delay-min	<- 1		<- minimum delay in seconds from start of trial to presentation of stimulus
+			15) delay-max	<- 5		<- maximum delay in seconds from start of trial to presentation of stimulus
+			16) local-file-output	<- nil	<- name of local file to save data to; if non-nil will save data to a local file with the name specified as described above; should provide a string
+			17) tcp		<- t		<- a flag to specify whether to save data to a json to be sent over tcp
+			18) tcp-file-output	<- nil  <- name of a local file to save tcp data to; if non-nil will save data to a local file with the name specified as described above; should provide a string
+
+
+
+
+*The fatigue module will currently only work with the single threaded version of ACT-R v7.26+ because all of the "internal" ACT-R code is now protected with locks to avoid problems with external code interfering with ongoing processes. When the fatigue module tries to make adjustments by calling code in the procedural module, it is prevented doing so. However, if you load the "load-single-threaded-act-r.lisp" file instead of "load-act-r.lisp" then the external interface is not available and the locks are not used. The downside is that it doesn't allow us to open windows/displays/devices, and you cannot start the GUI environment. For the PVT this means you won't be able to see the model interact with an interface, but it will still run, produce trace, and print out results at the end (and save them to file if you enabled the parameter).
+
+**You can specify different parameters than the default when running the model. Refer to the ACT-R and Fatigue Module manuals to see recommended defaults and ranges if you are interested in changing the default values.

@@ -1,0 +1,5 @@
+A couple things for reference:
+
+More than two events can queue up behind a long motor execution -- not just one in processor and one in preparation.
+
+A prepared action that isn't executed is lost if a new action is performed.

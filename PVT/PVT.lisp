@@ -1,0 +1,990 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Model and Batch Run Code for Psychomotor Vigilance Task (PVT)
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; 
+;;; Author      : Glenn Gunzelmann, Bella Z. Veksler
+;;; Copyright   : (c)2016 AFRL/HEAS, All Rights Reserved
+;;; Availability: tbd
+;;; Address     : AFRL/RHAC
+;;;             : 711 Human Performance Wing
+;;;             : 2620 Q Street (Bldg 852)
+;;;             : Wright-Patterson AFB, OH 45431-7905
+;;;             : bellav717@gmail.com
+;;;             : glenn.gunzelmann@us.af.mil
+;;; 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; 
+;;; History
+;;;
+;;;  2004-07-21 - Glenn Gunzelmann
+;;;             : First version.
+;;;             : Runs PVT model, apparently across variations in any act-r
+;;;               or rpm parameters where real-numbered values are used
+;;;
+;;;  2004-07-31 - Kevin Gluck
+;;;             : There is a bug preventing variation in the :dat parameter from having the intended effect
+;;;             : The randomize-time parameter is having the opposite effect of that predicted by the documentation
+;;;
+;;;             : Dan Bothell provided fix for the randomize-time parameter
+;;;             : Mike Byrne subsequently provided a new master-process file and a new rpm-parameters file
+;;;
+;;;             : Dan recommends setting up a list of parameters and having ACT-R read off that list
+;;;             : Important thing is to set :dat after reset and before defining the productions
+;;;               -(i.e., in an sgp after clear-all)
+;;;
+;;;  2004-08-25 - Glenn Gunzelmann
+;;;             : Added additional keywords to pvt-batch function to make the
+;;;               the system more flexible. The following keywords were added:
+;;;               -:lapse-threshold - rts greater than this are considered lapses
+;;;               -:session-length - number of seconds to run each pvt session
+;;;               -:interval - reporting interval for rts in batch run file
+;;;               -:ind-data - flag; if t, individual data files are created for
+;;;                each run of the model, with complete rt & delay legacies
+;;;
+;;;             : Changed code for running model once stimulus appears. Model now runs in
+;;;               distinct chunks of time, controled by the :dat parameter. This was needed
+;;;               to force ACT-R to recalculate expected utilities, even after finding no
+;;;               utilities >=0 for a given cycle
+;;;
+;;;             : Removed "waiting" production. Delays now occur when no task-related productions
+;;;               rise above threshold, resulting in "blank" cycles.
+;;;               -Depends on previous revision.
+;;;
+;;;  2004-12-07 - Glenn Gunzelmann
+;;;             : Added functionality to pvt-batch to support comparison to data
+;;;               in batch runs
+;;;               -A third file is created to record statistics and average data
+;;;                when multiple iterations are run of a single parameter set
+;;;               -Correlations and mean-deviations are printed out for each
+;;;                set of parameters as the model goes through a batch run
+;;;                -These statistics are calculated for each day of the experiment
+;;; 
+;;;             : "Wait" production is back, based on experimenting with the model
+;;;
+;;;             : Added probabilities of success for the productions
+;;;
+;;;             : Added a keyword in pvt-batch to manipulate a parameter which
+;;;               increments :c for the respond productions each time "Wait" fires
+;;;               -Briefly used to manipulate G, and it may be reverted to that
+;;;                purpose
+;;; 
+;;;  2004-06-11 - Glenn Gunzelmann
+;;;             : Added function to support multiple small batch runs
+;;;               -Allows for variation of UT around G, rather than running the
+;;;                entire parameter space, where many combinations are nonsensical
+;;;
+;;; 2005-07-14 JBG Old code version w/out queuing (for performance reasons)
+;;;                but w/ correct data
+;;;
+;;; 2005-08-18 - Glenn Gunzelmann
+;;;            : Added total responses, median RT, Standard Deviation to batch-data
+;;;              and statistics files written during batch runs
+;;;            : Rewrote statistic generation functions for increased efficiency
+;;;            : Eliminated comparison to data in batch run (r and RMSD for data
+;;;              averaged over entire days
+;;;            : Verified accuracy of data recording relative to human data summary
+;;;
+;;; 2007-10-25 - Rick More
+;;;            : Added new utility mechanisms fp and fp-dec
+;;;
+;;; 2008-4-29 - Rick More
+;;;            : Adjusted fatigue mechansim so that noise is not scaled
+;;;            : Reset *fp* across trials
+;;;
+;;; 2009-02-12 - Rick More
+;;;            : Changed fatigue mechanisms to Dan Bothel's module
+;;;
+;;; 2009-05-05 - Rick More
+;;;            : Changed run-full-time to run during delay period.
+;;;
+;;; 2009-05-05 - Rick Moore
+;;;            : Added run-model function
+;;;
+;;; 2012-09-28 - Rick Moore
+;;;            : Modified to work with new run-with-microlapses function
+;;;
+;;; 2013-04-18 - Bella Veksler
+;;;            : Combined model and task code into one file
+;;;            : New running instructions
+;;;            : Modified run-model function and added new write out function
+;;;            : to work with MindModeling
+;;;
+;;; 2016-10-30 - Bella Veksler
+;;;            : Added debugging code and comments for distribution, organized file
+;;; 2019-06-05 - Bella Veksler
+;;;            : Updating to work with ACT-R 7.13 - no proc-display needed
+;;;
+;;; 2020-04-07 - Tim Halverson
+;;;            : Refactoring the code to keep protocol-independent code here (assuming a "standard" PVT task).
+;;;              Individual experiment protocls will be placed in other files and include this file.
+;;; 2020-04-28 - Tim Halverson
+;;;            : Added hour to the tuples returned by the PVT func in the list of data
+;;; 2024-06-27 - Drew Cranford
+;;;            : Added (require-extra) command to load fatigue module from extras directory
+;;;            : Added R->Lisp socket communication via tcp in order to run
+;;;              Simulated Annealing algorithm to optimize parameters
+;;;            : Added *delay-min* and *delay-max* parameters to allow modeler to specify
+;;;              what the range is for delays for a given protocol
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Running Instructions
+;;;
+;;;  - Call (run-model numiterations modelduration)
+;;;            where numiterations is number of times to rerun the model
+;;;            modelduration indicates how long the model should run in minutes
+;;;       Example: (run-model 10 10) will run the model 10 times, for 10 min each.
+;;;
+;;;  - Call (run-model-diagnostic)
+;;;            The parameters used are used to produce a "diagnostic" set of predictions
+;;;            for this code.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;;   From ACT-R/PM website ...
+;;;
+;;;   :randomize-time nil or number
+;;;   Default NIL. Normally, completion times for perceptual-motor operations have fixed times. 
+;;;   To make those times vary randomly around those fixed values, set this to a positive integer. 
+;;;   A value of 2 will produce an output from 1/2 to 3/2 of the input for each time; 
+;;;   a value of 4 will produce an output from 3/4 to 5/4, and so forth. 
+;;;   If no number is supplied (e.g., this is just set to T, then the value 3 is used, which is the EPIC default. 
+;;;
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Target parameters for simulating effects of sleep restriction
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;;   cognitive cycle time :dat  **
+;;;   activation noise     :ans
+;;;   expected gain noise  :egs  *
+;;;   goal value           :g    **
+;;;   goal activation (W)  :ga
+;;;   latency factor       :lf
+;;;   motor system params?
+;;;   
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Global parameters for running experiment
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;load ACT-R
+(load "../actr7/load-single-threaded-act-r.lisp")
+
+;;load socket server package and initialize host and port parameters
+(ql:quickload '(:usocket-server :cl-json :vom))
+;;(ql:quickload '(:cl-json :vom))
+(vom:config t :debug)
+
+(defparameter +host+ "127.0.0.1")
+;;(defparameter +port+ 9891)
+;;(defparameter +port+ 9892)
+;;(defparameter +port+ 9893)
+;;(defparameter +port+ 9894)
+;;(defparameter +port+ 9895)
+;;(defparameter +port+ 9896)
+;;(defparameter +port+ 9897)
+(defparameter +port+ 9850)
+(defparameter *tcp* nil)
+(defparameter *tcp-data* '())
+
+;;load fatigue module from extras directory
+;;(require-extra "fatigue")
+
+;;Window features
+(defparameter *w* nil)
+
+;;Other Experiment Parameters
+(defparameter *response* nil)
+(defparameter *falsestart* nil)
+(defparameter *actr-enabled-p* t)
+(defparameter *delay-min* 2) ;;default delay is 2-9 seconds
+(defparameter *delay-max* 9) 
+
+;;for local run to help debug
+(defparameter *local* nil)
+(defparameter *traceon* nil)
+(defparameter *trialresponses* "./data/trialresponses.txt")   ;outputs each trial's RT and parameter values
+(defparameter *blocksummary* "./data/blocksummary.txt")  ;outputs summary of RT, lapses, false starts, sleep attacks per block indicated in call to run-model
+(defparameter *trace* "./data/trace.txt")   ;outputs all task events and production firings
+(defparameter *total-trials* 0)
+
+;;parameters for study
+(defparameter *dat* 0.04)
+(defparameter *iu* 2.6)
+(defparameter *ut0* 2.2)
+(defparameter *fpbmc* .02)
+(defparameter *fpmc* 0)
+(defparameter *utbmc* .01)
+(defparameter *utmc* 0)
+(defparameter *hour* 8)
+(defparameter *fp-dec* 0.98)
+(defparameter *egs* 0.25)
+
+;;quantile boundaries from human data in block 1 of 35 minute PVT - used for diagnostics (run-model-diagnostic)
+(defparameter humanbins '(150 235.1570 242.8643 250.0535 255.0944 261.1778 265.6104 270.8033 274.8513 280.4543 285.0058 288.4825 294.4158 300.5963 306.8612 315.3008 325.4594 335.2695 351.6218 382.5690 845.4621))
+
+;;percent of all responses falling within each of the quantiles from the human data - used for diagnostics (run-model-diagnostic)
+(defparameter humanquantiles (make-hash-table))
+(setf (gethash 0 humanquantiles) '(0.006376196  0.050267380  0.100534759  0.150802139  0.200000000  0.250267380  0.300534759  0.349732620  0.400000000  0.450267380  0.500534759  0.549732620  0.600000000  0.650267380  0.699465241  0.749732620  0.800000000  0.849197861  0.899465241  0.949732620  1.000000000))
+(setf (gethash 1 humanquantiles) '(0.00312500 0.04702194 0.08254963 0.13897597 0.18286311 0.22988506 0.27481714 0.32288401 0.35945664 0.42006270 0.46394984 0.48693835 0.55172414 0.59979101 0.64681296 0.69905956 0.76071055 0.80355277 0.85997910 0.91327064 0.99895507))
+(setf (gethash 2 humanquantiles) '(0.01338826 0.05323591 0.08768267 0.13361169 0.17223382 0.22233820 0.25469729 0.30584551 0.33507307 0.37995825 0.42797495 0.45824635 0.51148225 0.57411273 0.61691023 0.67327766 0.73695198 0.78288100 0.83402923 0.90292276 0.99582463))
+(setf (gethash 3 humanquantiles) '(0.01575630 0.04268943 0.07257204 0.10138741 0.13233725 0.18249733 0.21237994 0.25827108 0.29028815 0.33084312 0.37353255 0.39807898 0.44930630 0.48772679 0.52828175 0.58911419 0.65528282 0.69156884 0.76307364 0.84951974 0.99786553))
+
+(setf (gethash 4 humanquantiles) '(0.01743590 0.05010438 0.06993737 0.10125261 0.12212944 0.16492693 0.19311065 0.21920668 0.24425887 0.30375783 0.33924843 0.35699374 0.40709812 0.45302714 0.49373695 0.55114823 0.61586639 0.65657620 0.73173278 0.82359081 0.99791232))
+(setf (gethash 5 humanquantiles) '(0.01554404 0.03052632 0.05473684 0.07473684 0.10736842 0.14105263 0.16947368 0.19789474 0.23263158 0.27263158 0.31368421 0.34526316 0.39052632 0.44315789 0.49157895 0.55368421 0.62631579 0.66736842 0.74000000 0.83052632 0.99684211))
+(setf (gethash 6 humanquantiles) '(0.02134472 0.05016358 0.06761178 0.09160305 0.11341330 0.13958561 0.16575791 0.19520174 0.22464558 0.26063250 0.29661941 0.32061069 0.36205016 0.41003272 0.44820065 0.51145038 0.58342421 0.64013086 0.70883315 0.79716467 0.99563795))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;; Helper Functions
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;percent of distribution in list l that falls below value p
+(defun pctless(l p)
+    (float (/ (count p l :test #'>) (length l))))
+
+(defun get-production-names ()
+ (mapcar (lambda(x) (production-name x)) (procedural-productions (get-module procedural))))
+
+(defun get-utilities()
+  (let ((prods (get-production-names))
+        (ret nil))
+    (dolist (p prods)
+      (push (gethash 'utility (production-parameter-values (get-production p))) ret))
+    (reverse ret)))
+
+(defun get-u()
+  (let ((prods (get-production-names))
+        (ret nil))
+    (dolist (p prods)
+      (push (gethash 'u (production-parameter-values (get-production p))) ret))
+    (reverse ret)))
+
+(defun flatten (l)
+  (cond ((null l) nil)
+        ((atom l) (list l))
+        (t (loop for a in l appending (flatten a)))))
+
+(defun write-list-to-file (l filename)
+  "Write a list to a file"
+  (with-open-file (fileout filename :direction :output :if-exists :append :if-does-not-exist :create)
+    (setf l (flatten l))
+    (loop for i to (- (length l) 2) do          
+          (format fileout "~10f~c" (nth i l) #\tab))
+    (format fileout "~10f~%" (car (last l)))))
+
+;returns median of values
+(defun median (values)
+  (when values
+    (let* ((srtd (sort values '<))
+           (middle (/ (length srtd) 2)))
+      (if (oddp (length srtd))
+          (nth (floor middle) srtd)
+        (/ (+ (nth middle srtd) (max (nth (1- middle) srtd) 0)) 2.0))
+      )))
+
+;returns mean of values
+(defun mean (values)
+  (let ((sum 0))
+    (mapcar #'(lambda (value)
+                (setf sum (+ value sum)))
+      values)
+    (if (> (length values) 0) (/ sum (length values) 1.0) 0)
+    ))
+
+;returns standard deviation of values
+(defun stdev (values)
+  (let ((avgrt (mean values)) (summation 0))
+    (mapcar #'(lambda (value)
+                (setf summation
+                  (+ summation
+                     (* (- value avgrt) (- value avgrt)))))
+      values)
+    (if (> (length values) 1) (sqrt (/ summation (1- (length values)))) 0)
+    ))
+
+
+(defun square(n) (* n n))
+
+;room mean squared error between the two lists
+(defun rmse (l1 l2)
+  (if (eql (length l1) (length l2))
+      (sqrt (mean (mapcar (lambda(i j) (square (- i j))) l1 l2)))
+      -1
+      ))
+
+(defun current-interval (start)
+  (let ((cur-time (if *actr-enabled-p* (get-time) (get-internal-real-time))))
+    (/ (- cur-time start) 1000)
+    ))
+
+(defun print-screen ()
+  "Print the Vision Module's visicon sorted by left to right top to bottom. For debugging."
+  (awhen (get-module :vision)  ;; Test that there is a vision module
+         (update-new it)
+         (check-finsts it) 
+      ;   (command-output "Loc        Att   Kind           Value             Color           ID")
+       ;  (command-output "---------  ---   -------------  ----------------  --------------  -------------")
+         (let ((chunks (copy-list (visicon-chunks it))))
+           (setq chunks (stable-sort chunks #'< :key (lambda (x) (chunk-slot-value-fct x 'screen-y))))
+       ;    (mapcar 'print-icon-feature chunks)
+         (mapcar #'(lambda(chunk) (list chunk (feat-attended chunk (get-module :vision)))) chunks))))
+
+(defun mywhynot (productions)
+  (if (current-model) 
+      (let* ((procedural (get-module procedural))
+             (conflict-set (no-output (pmatches-internal procedural)))
+             (ret '()))
+        
+        (dolist (production-name (if (null productions)
+                                     (all-productions)
+                                   productions))
+          
+          (let ((production (get-production production-name)))
+            (if (null production)
+                (push (format nil "~s does not name a production." production-name) ret)
+              (if (production-disabled production)
+                  (push (format nil "Production ~s is disabled." production-name) ret)
+                (if (member production-name conflict-set)
+                    (if (and (procedural-ppm procedural) (production-partial-matched-slots production))
+                        (progn ;; It's only a partial match
+                          (push (format nil "Production ~s partially matches the current state:" production-name) ret)
+                         ; (print-instantiation production)
+                          (let ((ut (car (no-output (sgp :ut)))))
+                            (when (and (numberp ut)
+                                       (numberp (production-utility production-name))
+                                       (< (production-utility production-name) ut))
+                              (push (format nil "Utility was below the threshold the last time it was in the conflict set.") ret ))))
+                      (progn ;; It's a complete match
+                        (push (format nil "Production ~s matches:" production-name) ret)
+                        (let ((ut (car (no-output (sgp :ut)))))
+                          (when (and (numberp ut)
+                                     (numberp (production-utility production-name))
+                                     (< (production-utility production-name) ut))
+                            (push (format nil "Utility was below the threshold the last time it was in the conflict set.") ret)))))
+                  (progn
+                    (push (format nil "Production ~s does NOT match." production-name) ret)
+                    (push (format nil "It fails because: ") ret)
+                    (push (format nil (failure-reason-string (production-failure-condition production) production)) ret)   ;actr7
+                    ;(push (format nil (failure-reason-string (production-failure-condition production) procedural production)) ret)   ;actr6
+                    )
+                  )))))
+        ret)
+      (print-warning "Whynot called with no current model.")))
+
+;useful for debugging, writes out trace of task and model execution
+(defun write-trace (label thisfile start-time)
+  (if (and *traceon* *local*) 
+      (if *response* 
+          (write-list-to-file (list (mp-time) label *response* (round (- *response* start-time)) (no-output (sgp :fp :fp-percent :ut :iu)) (get-utilities) (print-screen) (buffer-read 'visual-location) (mywhynot '(attend)) (no-output (sgp :fp-dec))) thisfile)
+          (write-list-to-file (list (mp-time) label 0 0 (no-output (sgp :fp :fp-percent :ut :iu)) (get-utilities) (print-screen) (buffer-read 'visual-location) (mywhynot '(attend)) (no-output (sgp :fp-dec))) thisfile))
+      ))
+
+
+;write out results in MindModeling format, includes mean, median, lapses, 
+;false starts and sleep attacks per period
+(defun mm-write-out(x minper subjects)
+  (let* ((milper (* 1000 60 minper))  ;milliseconds in a period
+         (my-hash-responses (make-hash-table))
+         (DVs (make-hash-table :test 'equal))
+         myhist
+         fs
+         alert
+         lapse
+         sa
+         rts)
+    (dolist (i x) 
+      (let ((h (floor (/ (third i) milper))))
+          (if (gethash h my-hash-responses) 
+            (setf (gethash h my-hash-responses) (append (gethash h my-hash-responses) (list (second i)))) 
+            (setf (gethash h my-hash-responses) (list (second i))))))
+    (dotimes (key 7) 
+      (setf rts (gethash key my-hash-responses))
+      (setf myhist (mapcar #'(lambda (i) (pctless rts i)) humanbins))
+      (setf (gethash (concatenate 'string "rmse" (write-to-string key)) DVs) (rmse myhist (gethash key humanquantiles)))
+      (setf alert (mapcan #'(lambda (i) (if (and (> i 150) (< i 500)) (list i))) rts))
+      (setf lapse (mapcan #'(lambda (i) (if (and (< i 30000) (> i 500)) (list i))) rts))
+      (setf fs (mapcan #'(lambda (i) (if (< i 150) (list i))) rts))
+      (setf sa (mapcan #'(lambda (i) (if (= i 30000) (list i))) rts))
+      (setf (gethash (concatenate 'string "mean" (write-to-string key)) DVs) (if (> (length alert) 0) (round (mean alert) 1) -10000))
+      (setf (gethash (concatenate 'string "median" (write-to-string key)) DVs) (if (> (length alert) 0) (round (median alert) 1) -10000))
+      (setf (gethash (concatenate 'string "lapse" (write-to-string key)) DVs) (if (> (length rts) 0) (/ (float (length lapse))  (length rts)) -10000))
+      (setf (gethash (concatenate 'string "fs" (write-to-string key)) DVs) (if (> (length rts) 0) (/ (float (length fs))  (length rts)) -10000))
+      (setf (gethash (concatenate 'string "sa" (write-to-string key)) DVs) (if (> (length rts) 0) (/ (float (length sa))  (length rts)) -10000))
+      (if *local* (write-list-to-file (list subjects (floor (/ *hour* 24)) (mod *hour* 24) key (no-output (sgp :fpbmc :fpmc :utbmc :utmc :dat :ut0 :iu :ppm)) (if (> (length alert) 0) (round (mean alert) 1) "") (if (> (length alert) 0) (round (median alert) 1) "") (/ (float (length lapse))  (length rts)) (/ (float (length fs))  (length rts)) (/ (float (length sa))  (length rts)) (length rts)) *blocksummary*)))
+    DVs
+))
+
+;returns a fraction that's a better round to a given decimal place
+(defun round-to (number precision &optional (what #'round))
+    (let ((div (expt 10 precision)))
+         (/ (funcall what (* number div)) div)))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;; Experiment Delivery Code
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun pvt (subject hour duration &key (visible nil) (sleep-threshold 30000) (feedback nil))
+  (let ((data nil)
+        (trial 0)
+        (start-block (if *actr-enabled-p*
+                         (get-time)
+                         (get-internal-real-time)))
+        (delay 0)
+        (start-time nil)
+	(sleep-attack nil) ;;track sleep-attacks for computing trial types
+	(fpdec (car (no-output (sgp :fp-dec )))))
+    (setf *w* (open-exp-window "Task Window" :x 200 :y 200 :width 200 :height 200 :visible visible))
+    (add-act-r-command "key-press" 'window-key-event-handler)
+    (monitor-act-r-command "output-key" "key-press")
+    (install-device *w*)
+    (if *actr-enabled-p*
+        (progn
+          (sgp :enable-fatigue nil)
+          (run-full-time 1))
+        (sleep 1))
+    (while (< (current-interval start-block) duration)
+           (setf *total-trials* (+ *total-trials* 1))
+           (process-events)
+           (clear-exp-window)
+           (if *actr-enabled-p* (sgp :enable-fatigue nil))
+           (no-output (eval (list 'mod-chunk (goal-focus) 'state 'wait)))
+           (reset-stimulus)
+           (setf delay (+ *delay-min* (act-r-random (1+ (- *delay-max* *delay-min*)))))   ;;NEED TO ADJUST THIS TIME FOR OPS-II
+           (setf *response* nil)
+	   (setf *falsestart* nil)
+           (setf start-time (if *actr-enabled-p* (get-time) (get-internal-real-time)))
+           
+           ;;DELAY
+           (eval (list 'sgp ':fp-dec 1))   ; set to 0 in subtractive, to 1 in multiplicative
+           (if *actr-enabled-p* (sgp :enable-fatigue t))
+           (clear-buffer 'visual-location)
+           (clear-buffer 'visual)
+           (clear (get-module :vision))
+           
+           (write-trace 'delaybegins *trace* start-time)
+           (run-until-time-or-condition delay #'(lambda() (not (equal nil *response*))))
+
+           (eval (list 'sgp ':fp-dec fpdec))
+           (write-trace 'fpdecon *trace* start-time)
+           
+           ;;Handle False Starts
+           (when *response* 
+             (write-trace 'falsestart *trace* start-time)
+             (let ((rt (if (and sleep-attack (< (- *response* start-time) 500))
+			  (+ (round (- *response* start-time)) (if feedback (+ (* feedback 1000) sleep-threshold) sleep-threshold)) ;;rt is 500 ms later due to timeout
+			  0))
+		   (trialtype (if (and sleep-attack (< (- *response* start-time) 500))
+				  "L"
+				  "FS")))
+               (if *local* (write-list-to-file (list subject (ceiling (/ hour 24)) (mod hour 24) hour trial (mp-time) trialtype (no-output (sgp :fpbmc :fpmc :utbmc :utmc :dat :ut0 :iu :fp :fp-percent :ut :ppm)) delay rt (no-output (sgp :fp-dec))) (format nil "./data/~a_trialresponses.txt" *local*)))
+	       ;;(format t "Saving False Start RT~%")
+	       (if *tcp* (setf *tcp-data* (cons (reverse (pairlis '(iteration day hour bout trial curtime delay trialtype rt)
+								  `(,subject
+								    ,(ceiling (/ hour 24))
+								    ,(mod hour 24)
+								    ,hour
+								    ,trial
+								    ,(get-time)
+								    ,delay
+								    ,trialtype
+								    ,rt)))
+					      *tcp-data*))))
+             (setf data (cons (list delay 0 (get-time) hour) data))
+             (setf *response* nil)  ;;for ROPER PVT we go straight to the next trial after a false start
+	     (setf *falsestart* 1)
+	     )
+
+	   ;;if sleep attack on previous trial and no lapse then record sleep attack data and continue
+	   (when (and sleep-attack (null *falsestart*))
+               (if *local* (write-list-to-file sleep-attack (format nil "./data/~a_trialresponses.txt" *local*)))
+	       ;;(format t "Saving False Start RT~%")
+	       (if *tcp* (setf *tcp-data* (cons (reverse (pairlis '(iteration day hour bout trial curtime delay trialtype rt)
+								  `(,(nth 0 sleep-attack)
+								    ,(nth 1 sleep-attack)
+								    ,(nth 2 sleep-attack)
+								    ,(nth 3 sleep-attack)
+								    ,(nth 4 sleep-attack)
+								    ,(nth 5 sleep-attack)
+								    ,(nth 8 sleep-attack)
+								    ,(nth 6 sleep-attack)
+								    ,(nth 9 sleep-attack))))
+					      *tcp-data*))))
+
+	   
+           ;continue trial and give model chance to respond
+           ;;STIMULUS PRESENTATION
+           (when (and (null *response*) (null *falsestart*))
+             (setf start-time (if *actr-enabled-p* (get-time) (get-internal-real-time)))
+             (add-text-to-exp-window *w* (format nil "START") :color 'red :x 100 :y 100 :width 80 :height 80)
+             (write-trace 'stimulus *trace* start-time)
+             (no-output (eval (list 'mod-chunk (goal-focus) 'state 'wait)))
+             (write-trace 'trytorespond *trace* start-time)
+             (run-until-time-or-condition (/ sleep-threshold 1000) #'(lambda() (not (equal nil *response*))))
+             (write-trace 'timeexpire *trace* start-time)
+             (clear-exp-window)
+             (if *actr-enabled-p* (sgp :enable-fatigue nil))
+           )
+           
+           ;;Handle Sleep Attacks
+	   (setf sleep-attack nil) ;;reset sleep attack tracker
+           (if (and (null *response*) (null *falsestart*) *actr-enabled-p*) 
+               (progn 
+                 (write-trace 'sleepattack *trace* start-time)
+		 (setf sleep-attack (list subject
+					  (ceiling (/ hour 24))
+					  (mod hour 24)
+					  hour
+					  trial
+					  (get-time)
+					  "T"
+					  (no-output (sgp :fpbmc :fpmc :utbmc :utmc :dat :ut0 :iu :fp :fp-percent :ut :ppm))
+					  delay
+					  (round (- (+ (get-time) (if feedback (* feedback 1000) 500)) start-time))
+					  (no-output (sgp :fp-dec))))) ;;added 500ms to sleep attacks to distinguish them from lapses
+               (write-trace 'alert *trace* start-time))
+
+	   ;;Feedback
+	   (if feedback
+	       (progn
+		 (add-text-to-exp-window *w* (format nil "~a" (round (- *response* start-time))) :color 'blue :x 80 :y 90 :width 40 :height 20)
+		 (if *actr-enabled-p*   ;;;WHAT IS THIS DOING? WHY RUN THE MODEL AHEAD 0.5 seconds ;;I think it is for presenting feedback
+		     (run-full-time feedback)
+		     (sleep .5))))
+           
+           ;;Record RT
+	   (when (and *response* (null *falsestart*))
+             (setf data (cons (list delay (round (- *response* start-time)) (get-time) hour) data))
+	     (let* ((rt (round (- *response* start-time)))
+		    (trialtype (cond ((< rt 150)
+				      "FS")
+				     ((and (>= rt 150) (<= rt 500))
+				      "V")
+				     ((and (> rt 500) (<= rt (if feedback (+ (* feedback 1000) sleep-threshold) sleep-threshold)))
+				      "L")
+				     (t "T"))))
+               (if *local* (write-list-to-file (list subject (ceiling (/ hour 24)) (mod hour 24) hour trial (mp-time) trialtype (no-output (sgp :fpbmc :fpmc :utbmc :utmc :dat :ut0 :iu :fp :fp-percent :ut :ppm)) delay (round (- *response* start-time)) (no-output (sgp :fp-dec))) (format nil "./data/~a_trialresponses.txt" *local*)))
+	       ;;(format t "Saving RT~%")
+	       (if *tcp* (setf *tcp-data* (cons (reverse (pairlis '(iteration day hour bout trial curtime delay trialtype rt)
+								  `(,subject
+								    ,(ceiling (/ hour 24))
+								    ,(mod hour 24)
+								    ,hour
+								    ,trial
+								    ,(get-time)
+								    ,delay
+								    ,trialtype
+								    ,rt)))
+						*tcp-data*))))
+	     
+             )
+	   
+           (setf trial (1+ trial)))
+    ;;if last trial was a timeout record data
+    (when sleep-attack
+      (if *local* (write-list-to-file sleep-attack (format nil "./data/~a_trialresponses.txt" *local*)))
+      ;;(format t "Saving False Start RT~%")
+      (if *tcp* (setf *tcp-data* (cons (reverse (pairlis '(iteration day hour bout trial curtime delay trialtype rt)
+							 `(,(nth 0 sleep-attack)
+							   ,(nth 1 sleep-attack)
+							   ,(nth 2 sleep-attack)
+							   ,(nth 3 sleep-attack)
+							   ,(nth 4 sleep-attack)
+							   ,(nth 5 sleep-attack)
+							   ,(nth 8 sleep-attack)
+							   ,(nth 6 sleep-attack)
+							   ,(nth 9 sleep-attack))))
+				       *tcp-data*))))
+    (clear-exp-window)
+    (add-text-to-exp-window *w* "Done" :color 'red :x 80 :y 90 :width 40 :height 20)
+    (remove-act-r-command-monitor "output-key" "key-press")
+    (remove-act-r-command "key-press")    
+    (reverse data)
+    ))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;; Running Model Code
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+#| 
+run-model runs the model multiple times and reports the results
+specify: numiterations: number of times to run model
+        modelduration: duration of model in minutes 
+        dat: cycle time (0.04)
+        iu: initial utility (2.6)
+        ut0: utility threshold (2.2)
+        fpdec: decrement multiplier due to microlapses (0.98)
+        fpmc: Production Utility Time on Task exponent parameter (default=0)
+        utmc: Utility Threshold Time on Task exponent parameter (default=0)
+        bouts: The number of bouts to run specified by a list of their start times.
+        schedule: The sleep schedule for the biomathematical model.
+        
+        For both bouts and schedule: 
+          The start times are based on hour number from beginning of schedule (10 = 10am on first day)
+ |#
+
+(defun run-model (&key (dat 0.04) (iu 2.6) (ut0 2.2) (fpdec 0.98) (fpmc 0) (fpbmc 0) (utmc 0) (utbmc 0) (egs .25) (numiterations 1) (modelduration 35) (bouts '(10)) (schedule '((7.5 96.5))) (delay-min 2) (delay-max 9) (feedback 0.5) (local-file-output nil) (tcp nil))
+  (setf *dat* dat) 
+  (setf *iu* iu)
+  (setf *fpbmc* fpbmc)  
+  (setf *fpmc* fpmc)
+  (setf *utbmc* utbmc)
+  (setf *utmc* utmc)
+  (setf *ut0* ut0)
+  (setf *fp-dec* fpdec)
+  (setf *egs* egs)
+  (setf *delay-min* delay-min)
+  (setf *delay-max* delay-max)
+  (setf *tcp* tcp)
+  (setf *local* local-file-output)
+  (let ((run-data '())) 
+    (if *local* 
+        (progn 
+          (write-list-to-file (list "subject" "day" "hour" "bout" "trial" "sec" "trialtype" "fpbmc" "fpmc" "utbmc" "utmc" "dat" "ut0" "iu" "fp" "fp-percent" "ut" "ppm" "delay" "RT" "fp dec") (format nil "./data/~a_trialresponses.txt" *local*))  ;BMH=*last-biomathematical-hour* BMV=*last-biomathematical-value*
+          (write-list-to-file (list "subjects" "day" "hour" "sec" "fpbmc" "fpmc" "utbmc" "utmc" "dat" "ut0" "iu" "ppm" "meanalertRT" "medianalertRT" "lapsespct" "fapct" "sapct" "numtrials") *blocksummary*) 
+          (write-list-to-file (list 'time 'label 'response 'rt 'fp 'fp-percent 'ut 'iu 'wait 'attend 'respond) *trace*)))
+    (set-schedule schedule  :p0 3.841432 :u0 38.509212 :k0 0.019455)
+    (dolist (b bouts)
+      (dotimes (i numiterations)
+        (format t "Iteration: ~s Bout: ~s~%" i b)
+        (setf *hour* b)
+        (reset)
+        (sgp-fct (list :hour b))
+        (let ((cur-run-data (pvt i b (- (* 60 modelduration) (1+ *delay-max*)) :sleep-threshold 30000 :visible nil :feedback feedback)))
+          (setf run-data (append cur-run-data run-data)))))
+    run-data))
+
+
+(defun run-model-diagnostic ()
+  (print-hash-table (mm-write-out
+                     (run-model :dat .04 :egs 0.04 :iu 2.6 :ut0 2.2 :fpmc -.05 :fpbmc 0 :utmc -.01 :utbmc 0 :numiterations 10 :modelduration 35 :fpdec 0.98) 5 10)))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;; TCP Socket Communication Code
+;; And Parameter Optimization
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;SET SCHEDULES FOR OPSI, OPSII, SERE, and HIGH
+;; sleep schedule default to general OPSII procedures; personalized in parameter optimization script
+(defparameter *OPSI-SS* '((6 23) (30 47) (54 71) (78 95) (102 119) (126 143) (150 167) (174 191) (198 215) (222 239) (246 263) (270 287) (294 311) (318 335) (342 359) (366 383) (390 407) (414 431) (438 455) (462 479) (486 503) (510 527) (534 551) (558 575) (582 599) (606 623) (630 647) (654 671) (678 695) (702 719) (726 743) (750 767) (774 791) (798 815) (822 839) (846 863) (870 887) (894 911) (918 935) (942 959) (966 983) (990 1007) (1014 1031) (1038 1055) (1062 1079) (1086 1103) (1110 1127) (1134 1151) (1158 1175) (1182 1199) (1206 1223) (1230 1247) (1254 1271) (1278 1295) (1302 1319) (1326 1343) (1350 1367) (1374 1391) (1398 1415) (1422 1439) (1446 1463) (1470 1487) (1494 1511) (1518 1535) (1542 1559) (1566 1583) (1590 1607) (1614 1631) (1638 1655) (1662 1679) (1686 1703) (1710 1727) (1734 1751) (1758 1775) (1782 1799) (1806 1823) (1830 1847) (1854 1871) (1878 1895) (1902 1919) (1926 1943) (1950 1967) (1974 1991) (1998 2015) (2022 2039)))
+
+(defparameter *OPSII-SS* '((5 21) (29 45) (53 69) (77 93) (101 117) (125 141) (149 165) (173 189) (197 216) (220 240) (244 264) (268 285) (293 309) (317 336) (340 360) (364 384) (388 405) (413 429) (437 456) (460 480) (484 504) (508 525) (533 549) (557 576) (580 600) (604 624) (628 645) (653 669) (677 693) (701 717) (725 741) (749 765) (773 789) (797 813) (821 837) (845 861) (869 885) (893 909)))
+
+(defparameter *SERE-SS* '((6 23) (30 47) (54 71) (77 97) (101 121) (125 145) (149 169) (173 193) (197 217) (221 241) (245 265) (269 289) (293 313) (317 337) (341 361) (365 385) (389 409) (413 433) (438 455) (462 479) (486 503) (510 527) (534 551) (558 575) (582 599) (606 623) (630 647) (654 671) (678 695) (702 719) (726 743) (750 767) (774 791) (798 815) (822 839) (846 863) (870 887) (894 911) (918 935) (942 959) (966 983) (990 1007) (1014 1031) (1038 1055) (1062 1079)))
+
+(defparameter *HIGH-SS* '((6 23) (30 47) (54 71) (78 95) (102 119) (126 143) (150 167) (174 191) (198 215) (222 239) (246 263) (270 287) (294 311) (318 335) (342 359) (366 383) (390 407) (414 431) (438 455) (462 479) (486 503) (510 527) (534 551) (558 575) (582 599) (606 623) (630 647) (654 671) (678 695) (702 719) (726 743) (750 767) (774 791) (798 815) (822 839) (846 863) (870 887) (894 911) (918 935) (942 959) (966 983) (990 1007)))
+
+;; bouts (i.e., testing session) assumed to occur at 10am
+(defun run-model-param-opt (&key (dat 0.05) (egs .25) (ut0 2.2) (iu 2.6) (utmc -0.01) (utbmc 0.01) (fpdec 0.98) (fpmc -0.05) (fpbmc 0.02) (numiterations 10) (modelduration 10) (bouts '(34 82 130 274 322 394 514 634 754 898)) (schedule *OPSII-SS*) (delay-min 1) (delay-max 5) (sleep-thresh 500) (feedback nil) (local-file-output nil) (tcp t) (tcp-file-output nil))
+  ;;(format t "Running model~%")
+  (setf *dat* dat)
+  (setf *egs* egs)
+  (setf *ut0* ut0)
+  (setf *iu* iu)
+  (setf *utmc* utmc)
+  (setf *utbmc* utbmc)
+  (setf *fp-dec* fpdec)
+  (setf *fpmc* fpmc)
+  (setf *fpbmc* fpbmc)
+  (setf *delay-min* delay-min)
+  (setf *delay-max* delay-max)
+  (setf *tcp* tcp)
+  (setf *tcp-data* nil) ;;reset *tcp-data* each time we run the model)
+  (setf *local* local-file-output)
+  (if (stringp schedule)
+      (cond ((equal schedule "OPSI")
+	     (setf schedule *OPSI-SS*))
+	    ((equal schedule "OPSII")
+	     (setf schedule *OPSII-SS*))
+	    ((equal schedule "SERE")
+	     (setf schedule *SERE-SS*))
+	    ((equal schedule "HIGH")
+	     (setf schedule *HIGH-SS*))
+	    (t (setf schedule *OPSII-SS*)))
+      (if (not schedule) (setf schedule *OPSII-SS*)))
+  (if *local*
+      (write-list-to-file (list "subject" "day" "hour" "bout" "trial" "sec" "trialtype" "fpbmc" "fpmc" "utbmc" "utmc" "dat" "ut0" "iu" "fp" "fp-percent" "ut" "ppm" "delay" "RT" "fp dec")
+			  (format nil "./data/~a_trialresponses.txt" *local*)))
+  ;;(setf schedule *OPSII-SS*) ;;TODO: change this to be personalized
+  ;;(format t "Setting Schedule~%")
+  (if (not (equal schedule (fatigue-module-schedule (get-module :fatigue))))
+      (set-schedule schedule  :p0 3.841432 :u0 38.509212 :k0 0.019455))
+  (dolist (b bouts)
+    ;;(when (equal b 253) (setf *fpmc* -0.04)) ;;;FOR MAKING PREDICTIONS OF INTERVENTIONS WITH MODEL (NEED TO MAKE A GENERALIZABLE PROCESS FOR CHANGING PARAMS IN MIDDLE OF PROTOCOL TO SIMULATE INTERVENTIONS (229 for MORPHEUS, or 253 if first night is total sleep dep)
+    (dotimes (i numiterations)
+      (format t "Iteration: ~s Bout: ~s~%" i b)
+      (setf *hour* b)
+      ;;(format t "Resetting model~%")
+      (reset)
+      ;;(format t "Done resetting~%")
+      (sgp-fct (list :hour b))
+      (pvt i b (- (* 60 modelduration) (1+ *delay-max*)) :sleep-threshold sleep-thresh :visible nil :feedback feedback)))
+  (if tcp-file-output
+      (progn
+	(with-open-file (str (format nil "./data/~a_tcpdata.csv" tcp-file-output)
+			     :direction :output
+			     :if-exists nil
+			     :if-does-not-exist :create)
+	  (format str "~{~A~^,~}~%" (list "Subject" "Day" "Hour" "Bout" "Trial" "TrialStart" "Delay" "TrialType" "RespTime")))
+	(with-open-file (str (format nil "./data/~a_tcpdata.csv" tcp-file-output)
+			     :direction :output
+			     :if-exists :append
+			     :if-does-not-exist nil)
+	  (dolist (row (reverse *tcp-data*))
+	    (format str "~{~a~^,~}~%" (list (cdr (assoc 'iteration row))
+					    (cdr (assoc 'day row))
+					    (cdr (assoc 'hour row))
+					    (cdr (assoc 'bout row))
+					    (cdr (assoc 'trial row))
+					    (cdr (assoc 'curtime row))
+					    (cdr (assoc 'delay row))
+					    (cdr (assoc 'trialtype row))
+					    (cdr (assoc 'rt row))))))))
+  (reverse *tcp-data*)
+  )
+
+;; process the incoming message and return a response
+(defun process-request (stream)
+  (handler-case
+      (progn
+	(vom:debug ";; Connection opened")
+	(with-input-from-string (msg (read-line stream))
+	  (vom:debug ";; Recieved message ~S" msg)
+	  (let ((json:*json-symbols-package* nil))
+	    (let ((json-msg (json:decode-json msg)))
+	      (vom:debug ";; Decoded JSON is ~S" json-msg)
+	      (when (equal (cdr (assoc 'exit json-msg)) "exit")
+		(exit))
+	      (let ((response (run-model-param-opt :dat (cdr (assoc 'dat json-msg))
+						   :egs (cdr (assoc 'egs json-msg))
+						   :ut0 (cdr (assoc 'ut json-msg))
+						   :iu (cdr (assoc 'iu json-msg))
+						   :utmc (cdr (assoc 'utmc json-msg))
+						   :utbmc (cdr (assoc 'utbmc json-msg))
+						   :fpdec (cdr (assoc 'fpdec json-msg))
+						   :fpmc (cdr (assoc 'fpmc json-msg))
+						   :fpbmc (cdr (assoc 'fpbmc json-msg))
+						   :bouts (cdr (assoc 'bouts json-msg))
+						   :schedule (cdr (assoc 'schedule json-msg))
+						   :numiterations (cdr (assoc 'numiterations json-msg)))))
+		;;(vom:debug ";; Result is ~S" response)
+		(setf response (json:encode-json-to-string response))
+		;;(vom:debug ";; Sending ~S" response)
+		(vom:debug ";; Sending response of length ~S" (length response))
+		(format stream "~S~%" response)
+		(finish-output stream))))))
+    (error (e) (vom:error "Error processing request: ~A" e)))
+  )
+
+
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;; ACT-R Code
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmethod window-key-event-handler (model key)
+  (declare (ignorable model key))
+  (setf *response*
+    (if *actr-enabled-p*
+				(progn
+					(get-time))
+				(get-internal-real-time)))
+  t)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Model Code -- Psychomotor Vigilance Task (PVT) -- ACT-R 6.0
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; 
+;;; Author      : Glenn Gunzelmann, Bella Z. Veksler
+;;; Copyright   : (c)2016 AFRL/HEAS, All Rights Reserved
+;;; Availability: tbd
+;;; Address     : AFRL/HEAS
+;;;             : 6030 South Kent St.
+;;;             : Mesa, AZ  85212-6061
+;;;             : glenn.gunzelmann@mesa.afmc.af.mil
+;;; 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; 
+;;; History
+;;;
+;;;  2004-07-21 - Glenn Gunzelmann
+;;;             : Created from old combined task/model code file
+;;;
+;;;  2007-12-10 - Glenn Gunzelmann
+;;;             : Completed careful validation of appropriate behavior
+;;;
+;;;  2016-10-28 - Bella Z. Veksler
+;;;             : Included eval statements for writing out trace of productions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Initialization
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(setf *actr-enabled-p* t)
+
+(clear-all)
+
+(define-model fatigue-pvt
+
+  (sgp-fct (list
+            :iu *iu* 
+
+            :fpbmc *fpbmc*
+            :fpmc *fpmc* 
+            
+            :utbmc *utbmc*
+            :utmc *utmc*
+            :ut0 *ut0*
+
+            :hour *hour*            
+            :dat *dat*
+            :fp-dec *fp-dec*
+            
+            :egs *egs* ;SCJ added because we expected EGS to be a possible mechanism of fatigue action
+            ))
+  (sgp-fct (list :ppm (* (car (no-output (sgp :iu))) 2)))
+
+  (sgp ;;:seed (1234 1)
+       :er t 
+       :esc t 
+       :ol nil
+       :v nil
+       :cst nil
+       :trace-detail high 
+       :randomize-time t
+       :UNSTUFF-VISUAL-LOCATION nil    ;;required for ACT-R 7
+       :vpft t  ;; this applies the randomize-time function to cognitive cycle times
+       :ncnar nil ;;controls whether or not the system makes chunks "look" pretty after a run by cleaning up the merged names
+       )
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;; The following are set to t above.
+;;
+;; (pm-set-params :real-time t)
+;;   -Causes model to run in real-time
+;;
+;; (pm-set-params :show-focus t)
+;;   -Will show the current location of the eye's fixation
+;;
+;; (sgp :v t)
+;;   -Will print the model trace to the active listener
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Chunk-types and declarative memory
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(chunk-type do-pvt state)
+
+(add-dm (trial isa do-pvt state wait)
+        (wait isa chunk)
+        (look isa chunk)
+        (done isa chunk))
+
+(goal-focus trial)
+(set-similarities (wait look -.5))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Productions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(P wait
+   =goal>
+      ISA                   do-pvt
+      state                 wait
+    - state                 done
+   ?manual>
+      state                 free
+   ?visual>
+      state                 free
+   ?visual-location>
+      buffer                empty
+   ==>  
+!eval! (write-trace 'wait *trace* 0)
+ )
+
+
+(P attend
+   =goal>
+      ISA                   do-pvt
+      state                 =state
+    - state                 done                       
+    - state                 look
+   =visual-location>
+      ;;ISA                   visual-location
+   ==>
+   +visual>
+      cmd                   move-attention
+      screen-pos            =visual-location
+   =goal>
+      state                 look  
+ 
+!eval! (write-trace 'attend *trace* 0)
+)
+
+
+(P respond
+   =goal>
+      ISA                   do-pvt
+      state                 look
+    - state                 done
+   ?manual>
+      state                 free
+   ?visual>
+      state                 free
+==>
+   +manual>
+      ISA    punch
+      hand   right
+      finger index
+   =goal>
+      state                 done
+   +visual>   ISA           clear 
+!eval! (write-trace 'respond *trace* 0)   
+)
+)
+
+
+(defun start-server ()
+  (usocket:socket-server nil +port+ #'process-request))

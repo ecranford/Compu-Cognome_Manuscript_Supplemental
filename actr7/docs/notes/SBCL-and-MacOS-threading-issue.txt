@@ -1,0 +1,171 @@
+Seems to be a problem with condition-wait in SBCL on Macs.
+It takes a "long" time to complete and the processor basically
+just goes idle.  Doesn't happen in the single-threaded versions.
+
+This is with version 1.5.8
+
+*  (time (time-functions (dispatch-apply evaluate-act-r-command send-des-action bt:make-condition-variable bt:make-lock add-action-to-queue bt:condition-wait bt:condition-notify perform-action execute-command evaluate-command bt:acquire-lock bt:release-lock determine-current-model send-remote-command model-output-internal) (dispatch-apply "model-output" "this")))
+this
+Evaluation took:
+  0.457 seconds of real time
+  0.003262 seconds of total run time (0.001190 user, 0.002072 system)
+  0.66% CPU
+  1,645,054,546 processor cycles
+  32,768 bytes consed
+  
+((MODEL-OUTPUT-INTERNAL 145) (SEND-REMOTE-COMMAND)
+ (DETERMINE-CURRENT-MODEL 0 0) (BORDEAUX-THREADS:RELEASE-LOCK 0 0 0)
+ (BORDEAUX-THREADS:ACQUIRE-LOCK 0 0 0 0 0) (EVALUATE-COMMAND 145)
+ (EXECUTE-COMMAND 145) (PERFORM-ACTION 0 0)
+ (BORDEAUX-THREADS:CONDITION-NOTIFY 0 0 0 0 0 0)
+ (BORDEAUX-THREADS:CONDITION-WAIT 457) (ADD-ACTION-TO-QUEUE 0 0)
+ (BORDEAUX-THREADS:MAKE-LOCK 0 0)
+ (BORDEAUX-THREADS:MAKE-CONDITION-VARIABLE 0 0) (SEND-DES-ACTION 457)
+ (EVALUATE-ACT-R-COMMAND 457) (DISPATCH-APPLY 457))
+
+
+
+For comparison, here's a run with 1.5.8 under Linux
+
+* (time (time-functions (dispatch-apply evaluate-act-r-command send-des-action bt:make-condition-variable bt:make-lock add-action-to-queue bt:condition-wait bt:condition-notify perform-action execute-command evaluate-command bt:acquire-lock bt:release-lock determine-current-model send-remote-command model-output-internal) (dispatch-apply "model-output" "this")))
+this
+Evaluation took:
+  0.003 seconds of real time
+  0.002656 seconds of total run time (0.001679 user, 0.000977 system)
+  100.00% CPU
+  6,118,120 processor cycles
+  0 bytes consed
+  
+((MODEL-OUTPUT-INTERNAL 3) (SEND-REMOTE-COMMAND) (DETERMINE-CURRENT-MODEL 0 0)
+ (BORDEAUX-THREADS:RELEASE-LOCK 0 0 0 0)
+ (BORDEAUX-THREADS:ACQUIRE-LOCK 0 0 0 0 0 0 0) (EVALUATE-COMMAND 3)
+ (EXECUTE-COMMAND 3) (PERFORM-ACTION 2 0)
+ (BORDEAUX-THREADS:CONDITION-NOTIFY 0 0 0 0 0 0 0)
+ (BORDEAUX-THREADS:CONDITION-WAIT 3) (ADD-ACTION-TO-QUEUE 0 0)
+ (BORDEAUX-THREADS:MAKE-LOCK 0 0 0 0)
+ (BORDEAUX-THREADS:MAKE-CONDITION-VARIABLE 0 0 0 0) (SEND-DES-ACTION 3)
+ (EVALUATE-ACT-R-COMMAND 3) (DISPATCH-APPLY 3))
+
+If I add a timeout of .01 and loop reacquiring the lock on the condition-wait calls in
+send-des-action, dispatcher-process-actions, and send-remote-command the processor
+usage gets better but not much in terms of run-time:
+
+* (time (time-functions (dispatch-apply evaluate-act-r-command send-des-action bt:make-condition-variable bt:make-lock add-action-to-queue bt:condition-wait bt:condition-notify perform-action execute-command evaluate-command bt:acquire-lock bt:release-lock determine-current-model send-remote-command model-output-internal) (dispatch-apply "model-output" "this")))
+this
+Evaluation took:
+  0.200 seconds of real time
+  0.011994 seconds of total run time (0.004338 user, 0.007656 system)
+  6.00% CPU
+  719,851,326 processor cycles
+  0 bytes consed
+  
+((MODEL-OUTPUT-INTERNAL 105) (SEND-REMOTE-COMMAND)
+ (DETERMINE-CURRENT-MODEL 0 0) (BORDEAUX-THREADS:RELEASE-LOCK 0 0 0)
+ (BORDEAUX-THREADS:ACQUIRE-LOCK 147 0 0 0 0 0 0 0 0 0 0 0 0)
+ (EVALUATE-COMMAND 105) (EXECUTE-COMMAND 105) (PERFORM-ACTION 0 0)
+ (BORDEAUX-THREADS:CONDITION-NOTIFY 0 0 0 0 0 0)
+ (BORDEAUX-THREADS:CONDITION-WAIT 11 10 11 11 10 11 11 10 11 11 10 11 10 10 11
+                                  10 11 10)
+ (ADD-ACTION-TO-QUEUE 0 0) (BORDEAUX-THREADS:MAKE-LOCK 0 0)
+ (BORDEAUX-THREADS:MAKE-CONDITION-VARIABLE 0 0) (SEND-DES-ACTION 199)
+ (EVALUATE-ACT-R-COMMAND 199) (DISPATCH-APPLY 199))
+NIL
+* 
+
+
+On further investigation, it's not actually the condition-wait time that's the issue
+because in CCL on a Mac it takes about as long, but doesn't seem to sleep the processor and
+finishes in a reasonable time:
+
+? (time (time-functions (bt:condition-wait) (dispatch-apply "model-output" "this")))
+this
+(TIME-FUNCTIONS (BORDEAUX-THREADS:CONDITION-WAIT) (DISPATCH-APPLY "model-output" "this"))
+took 444 microseconds (0.000444 seconds) to run.
+During that period, and with 4 available CPU cores,
+     253 microseconds (0.000253 seconds) were spent in user mode
+     195 microseconds (0.000195 seconds) were spent in system mode
+ 800 bytes of memory allocated.
+ 7 minor page faults, 0 major page faults, 0 swaps.
+((BORDEAUX-THREADS:CONDITION-WAIT 415))
+NIL
+
+
+
+Here's a stripped down example that seems to have the same issue, but doesn't show
+the processor as being less than 100%.
+
+This is the code (based on the SBCL example from the manual, but switched to use 
+bordeaux threads and verify that the reader is done before returning):
+
+(defvar *bt-buffer-queue* (bt:make-condition-variable))
+(defvar *bt-buffer-lock* (bt:make-lock "buffer lock"))
+
+(defvar *bt-buffer* (list nil))
+
+(defun bt-reader ()
+  (bt:with-lock-held (*bt-buffer-lock*)
+    (loop
+     (bt:condition-wait *bt-buffer-queue* *bt-buffer-lock*)
+     (loop
+      (unless *bt-buffer* (return))
+      (let ((head (car *bt-buffer*)))
+        (setf *bt-buffer* (cdr *bt-buffer*))
+        (format t "reader ~A woke, read ~A~%"
+          T head))))))
+
+(defun bt-writer ()
+  (bt:with-lock-held (*bt-buffer-lock*)
+    (let ((el (intern
+               (string (code-char
+                        (+ (char-code #\A) (random 26)))))))
+      (setf *bt-buffer* (cons el *bt-buffer*)))
+    (bt:condition-notify *bt-buffer-queue*))
+  (loop (bt:with-lock-held (*bt-buffer-lock*)
+          (when (null *bt-buffer*) (return)))))
+
+
+(bt:make-thread #'bt-reader)
+
+
+;;;;;;;;;;;;;
+
+Here are the results in CCL (0.000099 seconds) and SBCL (0.020 seconds) run on the same machine:
+
+CCL:
+
+? (time (bt-writer))
+reader T woke, read G
+reader T woke, read NIL
+(BT-WRITER)
+took  99 microseconds (0.000099 seconds) to run.
+During that period, and with 4 available CPU cores,
+     139 microseconds (0.000139 seconds) were spent in user mode
+      15 microseconds (0.000015 seconds) were spent in system mode
+ 1,088 bytes of memory allocated.
+NIL
+? 
+
+SBCL:
+
+* (time (bt-writer))
+reader T woke, read A
+Evaluation took:
+  0.020 seconds of real time
+  0.019945 seconds of total run time (0.019855 user, 0.000090 system)
+  100.00% CPU
+  71,596,854 processor cycles
+  0 bytes consed
+
+
+
+
+UPDATE:
+
+With the dispatcher in r3029 it seems to have been partially fixed, and 
+it appears that only a condition-wait in the top-level (interactive) thread 
+causes the problem.
+
+So, in Lisp only mode that works, but if there are any remote calls from
+the top-level it's still going to get hit, for instance remote monitors
+on something like model-output or output-key if running from Lisp.
+
